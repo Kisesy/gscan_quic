@@ -28,6 +28,7 @@ type ScanRecord struct {
 	httpVerifyTimeout time.Duration
 }
 type ScanRecordArray []*ScanRecord
+
 type ScanOptions struct {
 	Config *GScanConfig
 
@@ -126,6 +127,7 @@ func matchHostnames(pattern, host string) bool {
 	}
 	return true
 }
+
 func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 	start := time.Now()
 
@@ -170,8 +172,10 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 		// IdleTimeout:      options.Config.ScanMaxSSLRTT,
 		KeepAlive: false,
 	}
+
 	go func(chan bool) {
 		var err error
+		// tlsCfg 在 gscan.go 里
 		quicSessn, err = quic.DialAddr(addr, tlsCfg, quicCfg)
 		if err != nil {
 			success <- false
