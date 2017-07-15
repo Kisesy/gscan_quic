@@ -36,12 +36,7 @@ IP 段写在 iprange.conf 文件里, 一行一个<br>
 **注意: 默认只输出100个, 但是可以对照最下面的配置说明改**
 
 ## 下载
-到 https://github.com/Kisesy/gscan_quic/releases 下载编译好的, **但这里并不一定是最新版, 最好是自行编译**
-
-## 自行编译
-在 https://gox.jpillora.com/ 的第一个框里输入: github.com/Kisesy/gscan_quic<br>
-点击 [Show more] 按钮选中你的系统, 点击 Compile即可, 编译完到网页右边下载
-
+到 https://github.com/Kisesy/gscan_quic/releases 下载编译好的
 
 ## 配置说明
 一个完整的配置文件， json格式：
