@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func inet_ntoa(ipnr int64) net.IP {
@@ -152,21 +154,14 @@ func parseIPRangeFile(file string) ([]*IPRange, error) {
 		lineno = lineno + 1
 	}
 
-	// if len(ipranges) > 5 {
-	// 	dest := make([]*IPRange, len(ipranges))
-	// 	perm := rand.Perm(len(ipranges))
-	// 	for i, v := range perm {
-	// 		dest[v] = ipranges[i]
-	// 	}
-	// 	ipranges = dest
-	// }
-
 	// 去重操作
 	/*
 		"1.9.22.0-255"
 		"1.9.0.0/16"
 		"1.9.22.0-255"
+		"1.9.22.0/24"
 		"1.9.22.0-255"
+		"1.9.22.0-1.9.22.100"
 		"1.9.22.0-1.9.22.255"
 		"1.9.0.0/16"
 		"3.3.3.0/24"
@@ -190,6 +185,17 @@ func parseIPRangeFile(file string) ([]*IPRange, error) {
 		if !contains(newIpranges, iprange) {
 			newIpranges = append(newIpranges, iprange)
 		}
+	}
+
+	// 打乱扫描顺序
+	if len(newIpranges) > 0 {
+		rand.Seed(time.Now().Unix())
+		dest := make([]*IPRange, len(newIpranges))
+		perm := rand.Perm(len(newIpranges))
+		for i, v := range perm {
+			dest[v] = newIpranges[i]
+		}
+		newIpranges = dest
 	}
 	return newIpranges, nil
 }

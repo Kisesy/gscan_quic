@@ -189,7 +189,7 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 		}
 
 		for _, verifyHost := range options.Config.ScanGoogleIP.HTTPVerifyHosts {
-			req, err := http.NewRequest(http.MethodHead, "https://"+verifyHost, nil)
+			req, _ := http.NewRequest(http.MethodHead, "https://"+verifyHost, nil)
 			req.Close = true
 			resp, err := hclient.Do(req)
 			// 无论是否有err，最好都close一下
