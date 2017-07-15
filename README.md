@@ -2,10 +2,10 @@
 ### 改自 yinqiwen 大神的 github.com/yinqiwen/gscan 在此感谢<hr>
 
 ## 简单说明
-IP 段写在 iprange.conf 文件里, 一行一个, 具体格式下面有写到
+IP 段写在 iprange.conf 文件里, 一行一个, 具体格式下面有写到<br>
+自己扫的时候请删掉 iprange.conf 中自带的IP段, 因为这是测试用的, 不一定是真可用的
 
-扫完的IP存放在 google_ip.txt 和类似 google_ip_20170714_18.24.55.txt 这种文件里
-
+扫完的IP存放在 google_ip.txt 和类似 google_ip_20170714_18.24.55.txt 这种文件里<br>
 分别是 goagent 和 goproxy 格式的
 
 配置可以对照下面的说明改, 但一般不需要改, 直接点击程序运行即可

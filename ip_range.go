@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -116,7 +116,8 @@ func parseIPRangeFile(file string) ([]*IPRange, error) {
 		} else if strings.Contains(line, "/") {
 			ip, ipnet, err := net.ParseCIDR(line)
 			if nil != err {
-				return nil, err
+				log.Printf("[WARNING] Invalid line:[%d] %s in IP Range file:%s", lineno, line, file)
+				continue
 			}
 			startIP = ip.String()
 			ones, _ := ipnet.Mask.Size()
@@ -150,97 +151,54 @@ func parseIPRangeFile(file string) ([]*IPRange, error) {
 		ipranges = append(ipranges, iprange)
 		lineno = lineno + 1
 	}
-	if len(ipranges) > 5 {
-		dest := make([]*IPRange, len(ipranges))
-		perm := rand.Perm(len(ipranges))
-		for i, v := range perm {
-			dest[v] = ipranges[i]
+
+	// if len(ipranges) > 5 {
+	// 	dest := make([]*IPRange, len(ipranges))
+	// 	perm := rand.Perm(len(ipranges))
+	// 	for i, v := range perm {
+	// 		dest[v] = ipranges[i]
+	// 	}
+	// 	ipranges = dest
+	// }
+
+	// 去重操作
+	/*
+		"1.9.22.0-255"
+		"1.9.0.0/16"
+		"1.9.22.0-255"
+		"1.9.22.0-255"
+		"1.9.22.0-1.9.22.255"
+		"1.9.0.0/16"
+		"3.3.3.0/24"
+		"3.3.0.0/16"
+		"3.3.3.0-255"
+		"1.1.1.0/24"
+		"1.9.0.0/16"
+			  +
+			  |
+			  |
+			  v
+		&main.IPRange{StartIP:17367040, EndIP:17432575},
+		&main.IPRange{StartIP:50528256, EndIP:50593791},
+		&main.IPRange{StartIP:16843008, EndIP:16843263},
+	*/
+	sort.Slice(ipranges, func(i int, j int) bool {
+		return ipranges[i].EndIP-ipranges[i].StartIP > ipranges[j].EndIP-ipranges[j].StartIP
+	})
+	var newIpranges []*IPRange
+	for _, iprange := range ipranges {
+		if !contains(newIpranges, iprange) {
+			newIpranges = append(newIpranges, iprange)
 		}
-		ipranges = dest
 	}
-	return ipranges, nil
+	return newIpranges, nil
 }
 
-/*
-func parseIPRangeFile(file string) ([]*IPRange, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
+func contains(ipranges []*IPRange, iprange *IPRange) bool {
+	for _, x := range ipranges {
+		if x.StartIP <= iprange.StartIP && x.EndIP >= iprange.EndIP {
+			return true
+		}
 	}
-	defer f.Close()
-
-	ipranges := make([]*IPRange, 0)
-	scanner := bufio.NewScanner(f)
-	lineno := 1
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		//comment start with '#'
-		if strings.HasPrefix(line, "#") || len(line) == 0 {
-			continue
-		}
-		var startIP, endIP string
-		// 1.9.22.0/24-1.9.22.0/24
-		if strings.Contains(line, "-") && strings.Contains(line, "/") {
-			ss := strings.Split(line, "-")
-			if len(ss) != 2 {
-				return nil, fmt.Errorf("Invalid line:%d in IP Range file:%s", lineno, file)
-			}
-			iprange1, iprange2 := ss[0], ss[1]
-			startIP = iprange1[:strings.Index(iprange1, "/")]
-			if net.ParseIP(startIP) == nil {
-				return nil, fmt.Errorf("Invalid line:%d in IP Range file:%s", lineno, file)
-			}
-			ip, ipnet, err := net.ParseCIDR(iprange2)
-			if nil != err {
-				return nil, err
-			}
-			ones, _ := ipnet.Mask.Size()
-			v := inet_aton(ip)
-			var tmp uint32
-			tmp = 0xFFFFFFFF
-			tmp = tmp >> uint32(ones)
-			v = v | int64(tmp)
-			endip := inet_ntoa(v)
-			endIP = endip.String()
-		} else if strings.Contains(line, "/") {
-			ip, ipnet, err := net.ParseCIDR(line)
-			if nil != err {
-				return nil, err
-			}
-			startIP = ip.String()
-			ones, _ := ipnet.Mask.Size()
-			v := inet_aton(ip)
-			var tmp uint32
-			tmp = 0xFFFFFFFF
-			tmp = tmp >> uint32(ones)
-			v = v | int64(tmp)
-			endip := inet_ntoa(v)
-			endIP = endip.String()
-		} else if strings.Contains(line, "-") {
-			ss := strings.Split(line, "-")
-			if len(ss) != 2 {
-				return nil, fmt.Errorf("Invalid line:%d in IP Range file:%s", lineno, file)
-			}
-			startIP, endIP = ss[0], ss[1]
-		} else {
-			startIP, endIP = line, line
-		}
-
-		iprange, err := parseIPRange(startIP, endIP)
-		if nil != err {
-			return nil, fmt.Errorf("Invalid line:%d in IP Range file:%s", lineno, file)
-		}
-		ipranges = append(ipranges, iprange)
-		lineno = lineno + 1
-	}
-	if len(ipranges) > 5 {
-		dest := make([]*IPRange, len(ipranges))
-		perm := rand.Perm(len(ipranges))
-		for i, v := range perm {
-			dest[v] = ipranges[i]
-		}
-		ipranges = dest
-	}
-	return ipranges, nil
+	return false
 }
-*/
