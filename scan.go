@@ -173,10 +173,22 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 		KeepAlive: false,
 	}
 
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		panic(err)
+	}
+	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		panic(err)
+	}
+	udpConn.SetDeadline(time.Now().Add(options.Config.ScanMaxSSLRTT - 500*time.Millisecond))
+	defer udpConn.Close()
+
 	go func(chan bool) {
 		var err error
 		// tlsCfg 在 gscan.go 里
-		quicSessn, err = quic.DialAddr(addr, tlsCfg, quicCfg)
+		// quicSessn, err = quic.DialAddr(addr, tlsCfg, quicCfg)
+		quicSessn, err = quic.Dial(udpConn, udpAddr, addr, tlsCfg, quicCfg)
 		if err != nil {
 			success <- false
 			return
