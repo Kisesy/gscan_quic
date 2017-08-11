@@ -153,7 +153,7 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 	success := make(chan bool, 5)
 
 	go func() {
-		<-time.After(options.Config.ScanMaxSSLRTT)
+		<-time.After(options.Config.ScanMaxSSLRTT + 500*time.Millisecond)
 		success <- false
 	}()
 
@@ -168,20 +168,21 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 	defer tr.Close()
 
 	quicCfg := &quic.Config{
-		HandshakeTimeout: options.Config.ScanMaxSSLRTT,
+		HandshakeTimeout: options.Config.ScanMaxSSLRTT - 500*time.Millisecond,
 		// IdleTimeout:      options.Config.ScanMaxSSLRTT,
 		KeepAlive: false,
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
-		panic(err)
+		return false
 	}
 	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
-		panic(err)
+		return false
 	}
-	udpConn.SetDeadline(time.Now().Add(options.Config.ScanMaxSSLRTT - 500*time.Millisecond))
+
+	udpConn.SetDeadline(time.Now().Add(options.Config.ScanMaxSSLRTT))
 	defer udpConn.Close()
 
 	go func(chan bool) {
