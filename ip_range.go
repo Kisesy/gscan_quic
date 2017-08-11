@@ -76,9 +76,10 @@ func parseIPRangeFile(file string) ([]*IPRange, error) {
 
 	ipranges := make([]*IPRange, 0)
 	scanner := bufio.NewScanner(f)
-	lineno := 1
+	lineno := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		lineno++
 		//comment start with '#'
 		if strings.HasPrefix(line, "#") || len(line) == 0 {
 			continue
@@ -151,7 +152,6 @@ func parseIPRangeFile(file string) ([]*IPRange, error) {
 			continue
 		}
 		ipranges = append(ipranges, iprange)
-		lineno = lineno + 1
 	}
 
 	// 去重操作
