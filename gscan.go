@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -45,12 +44,6 @@ type GScanConfig struct {
 	ScanGoogleIP    ScanGoogleIPConfig
 	ScanGoogleHosts ScanGoogleHostsConfig
 }
-
-var (
-	tlsCfg = &tls.Config{
-		InsecureSkipVerify: true,
-	}
-)
 
 func main() {
 	iprange_file := flag.String("iprange", "./iprange.conf", "IP Range file")

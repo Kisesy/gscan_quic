@@ -128,6 +128,12 @@ func matchHostnames(pattern, host string) bool {
 	return true
 }
 
+var (
+	tlsCfg = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+)
+
 func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 	start := time.Now()
 
@@ -148,8 +154,8 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 	record.PingRTT = record.PingRTT + pingRTT
 
 	addr := net.JoinHostPort(ip, "443")
+
 	start = time.Now()
-	// 写大一点, 防止........
 	success := make(chan bool, 5)
 
 	go func() {
@@ -187,7 +193,6 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 
 	go func(chan bool) {
 		var err error
-		// tlsCfg 在 gscan.go 里
 		// quicSessn, err = quic.DialAddr(addr, tlsCfg, quicCfg)
 		quicSessn, err = quic.Dial(udpConn, udpAddr, addr, tlsCfg, quicCfg)
 		if err != nil {
