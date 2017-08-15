@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/base64"
 	"io"
 	"io/ioutil"
 	"log"
@@ -132,6 +135,7 @@ var (
 	tlsCfg = &tls.Config{
 		InsecureSkipVerify: true,
 	}
+	g2pkp, _ = base64.StdEncoding.DecodeString("7HIpactkIAq2Y49orFOOQKurWxmmSFZhBCoQYcRhJ3Y=")
 )
 
 func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
@@ -199,6 +203,23 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 			success <- false
 			return
 		}
+		// 证书验证
+		cs := quicSessn.ConnectionState()
+		if cs == nil {
+			success <- false
+			return
+		}
+		pcs := cs.PeerCertificates
+		if len(pcs) < 2 {
+			success <- false
+			return
+		}
+		pkp := sha256.Sum256(pcs[1].RawSubjectPublicKeyInfo)
+		if !bytes.Equal(g2pkp, pkp[:]) {
+			success <- false
+			return
+		}
+
 		tr.DialAddr = func(hostname string, tlsConfig *tls.Config, config *quic.Config) (quic.Session, error) {
 			return quicSessn, err
 		}
