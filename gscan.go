@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/mikioh/ipaddr"
 )
 
 type ScanGoogleIPConfig struct {
@@ -101,6 +103,7 @@ func main() {
 	}
 	log.Printf("Start loading IP Range file:%s\n", *iprange_file)
 	ipranges, err := parseIPRangeFile(*iprange_file)
+
 	if nil != err {
 		fmt.Printf("%v\n", err)
 		return
@@ -114,24 +117,22 @@ func main() {
 	wg.Add(worker_count)
 	eval_count := 0
 	go func() {
-		ch := make(chan string)
+		ch := make(chan string, 1)
 		for i := 0; i < worker_count; i++ {
 			go testip_worker(ch, &options, &wg)
 		}
-		for _, iprange := range ipranges {
-			var i int64
-			for i = iprange.StartIP; i <= iprange.EndIP; i++ {
-				ch <- inet_ntoa(i).String()
-				eval_count++
+		c := ipaddr.NewCursor(ipranges)
+		for ip := c.First(); ip != nil; ip = c.Next() {
+			ch <- ip.IP.String()
+			eval_count++
 
-				if cfg.scanIP {
-					if options.RecordSize() >= cfg.ScanGoogleIP.RecordLimit {
-						goto _end
-					}
-				} else {
-					if len(options.inputHosts) == 0 {
-						goto _end
-					}
+			if cfg.scanIP {
+				if options.RecordSize() >= cfg.ScanGoogleIP.RecordLimit {
+					goto _end
+				}
+			} else {
+				if len(options.inputHosts) == 0 {
+					goto _end
 				}
 			}
 		}
