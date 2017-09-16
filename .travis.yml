@@ -1,0 +1,39 @@
+language: go
+
+go:
+- tip
+install:
+- go get github.com/Kisesy/gscan_quic
+script:
+- export EXE=gscan_quic
+- export TAR_EXCLUDE="--exclude=*.go --exclude=*.bz2 --exclude=vendor"
+- export CGO_ENABLED=0  
+- GOOS=windows GOARCH=386 go build
+- tar cjf ${EXE}_windows_386-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}"  
+- GOOS=windows GOARCH=amd64 go build
+- tar cjf ${EXE}_windows_amd64-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}"
+- GOOS=linux GOARCH=386 go build
+- tar cjf ${EXE}_linux_386-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
+- GOOS=linux GOARCH=amd64 go build
+- tar cjf ${EXE}_linux_amd64-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
+- GOOS=linux GOARCH=arm go build
+- tar cjf ${EXE}_linux_arm-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
+- GOOS=darwin GOARCH=amd64 go build
+- tar cjf ${EXE}_macos_amd64-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
+
+
+deploy:
+  provider: releases
+  api_key:
+    secure: ${TOKEN}
+  file: 
+    - "${EXE}_windows_386-${TRAVIS_TAG}.tar.bz2"
+    - "${EXE}_windows_amd64-${TRAVIS_TAG}.tar.bz2"
+    - "${EXE}_linux_386-${TRAVIS_TAG}.tar.bz2"
+    - "${EXE}_linux_amd64-${TRAVIS_TAG}.tar.bz2"
+    - "${EXE}_linux_arm-${TRAVIS_TAG}.tar.bz2"
+    - "${EXE}_macos_amd64-${TRAVIS_TAG}.tar.bz2"
+  skip_cleanup: true
+  on:
+    tags: true
+    repo: Kisesy/gscan_quic
