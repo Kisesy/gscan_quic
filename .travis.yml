@@ -8,19 +8,18 @@ script:
 - export EXE=gscan_quic
 - export TAR_EXCLUDE="--exclude=*.go --exclude=*.bz2 --exclude=vendor"
 - export CGO_ENABLED=0  
-- GOOS=windows GOARCH=386 go build
+- GOOS=windows GOARCH=386 go build -ldflags "-w -s"
 - tar cjf ${EXE}_windows_386-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}"  
-- GOOS=windows GOARCH=amd64 go build
+- GOOS=windows GOARCH=amd64 go build -ldflags "-w -s"
 - tar cjf ${EXE}_windows_amd64-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}"
-- GOOS=linux GOARCH=386 go build
+- GOOS=linux GOARCH=386 go build -ldflags "-w -s"
 - tar cjf ${EXE}_linux_386-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
-- GOOS=linux GOARCH=amd64 go build
+- GOOS=linux GOARCH=amd64 go build -ldflags "-w -s"
 - tar cjf ${EXE}_linux_amd64-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
-- GOOS=linux GOARCH=arm go build
+- GOOS=linux GOARCH=arm go build -ldflags "-w -s"
 - tar cjf ${EXE}_linux_arm-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
-- GOOS=darwin GOARCH=amd64 go build
+- GOOS=darwin GOARCH=amd64 go build -ldflags "-w -s"
 - tar cjf ${EXE}_macos_amd64-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
-
 
 deploy:
   provider: releases
@@ -37,3 +36,5 @@ deploy:
   on:
     tags: true
     repo: Kisesy/gscan_quic
+notifications:
+  email: false
