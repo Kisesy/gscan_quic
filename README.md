@@ -70,9 +70,13 @@ IP 段写在 iprange.conf 文件里, 一行一个<br>
 扫完的IP存放在 google_ip.txt 和类似 google_ip_20170714_18.24.55.txt 这种文件里<br>
 分别是 goagent 和 goproxy 格式的
 
-**注意: 默认是有输出个数限制的, 可以设置配置文件里的RecordLimit**
+> **注意:**
 
-**注意: 在扫描过程中是可以中断的, 只要按Ctrl+C就可以中断, 扫过的IP是会保留的**
+* 默认是有输出个数限制的, 可以设置配置文件里的RecordLimit
+
+* 在扫描过程中是可以中断的, 只要按Ctrl+C就可以中断, 扫过的IP是会保留的
+
+* 扫描IP段是随机的
 
 ## 下载
 到 https://github.com/Kisesy/gscan_quic/releases 下载编译好的

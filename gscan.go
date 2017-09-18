@@ -108,31 +108,38 @@ func main() {
 		fmt.Printf("%v\n", err)
 		return
 	}
-	exit := make(chan os.Signal)
 
 	log.Printf("Start scanning available IP\n")
+
 	start_time := time.Now()
 	worker_count := cfg.ScanWorker
+
 	var wg sync.WaitGroup
 	wg.Add(worker_count)
+
+	wait := make(chan os.Signal, 1)
+	signal.Notify(wait, os.Interrupt, os.Kill)
+
 	eval_count := 0
 	go func() {
-		ch := make(chan string, 1)
+		ch := make(chan string, 20)
 		for i := 0; i < worker_count; i++ {
 			go testip_worker(ch, &options, &wg)
 		}
-		c := ipaddr.NewCursor(ipranges)
-		for ip := c.First(); ip != nil; ip = c.Next() {
-			ch <- ip.IP.String()
-			eval_count++
+		for _, iprange := range ipranges {
+			c := ipaddr.NewCursor([]ipaddr.Prefix{iprange})
+			for ip := c.First(); ip != nil; ip = c.Next() {
+				ch <- ip.IP.String()
+				eval_count++
 
-			if cfg.scanIP {
-				if options.RecordSize() >= cfg.ScanGoogleIP.RecordLimit {
-					goto _end
-				}
-			} else {
-				if len(options.inputHosts) == 0 {
-					goto _end
+				if cfg.scanIP {
+					if options.RecordSize() >= cfg.ScanGoogleIP.RecordLimit {
+						goto _end
+					}
+				} else {
+					if len(options.inputHosts) == 0 {
+						goto _end
+					}
 				}
 			}
 		}
@@ -140,26 +147,20 @@ func main() {
 	_end:
 		close(ch)
 		wg.Wait()
-		close(exit)
+		close(wait)
 	}()
 
-	signal.Notify(exit, os.Interrupt)
-	<-exit
-	log.Println("Done")
+	<-wait
 
 	log.Printf("Scanned %d IP in %fs, found %d records\n", eval_count, time.Since(start_time).Seconds(), len(options.records))
-	records := options.records
-	if len(records) > 0 {
-		// sort.Slice(records, func(i, j int) bool {
-		// 	return records[i].SSLRTT < records[j].SSLRTT
-		// })
+
+	if records := options.records; len(records) > 0 {
 		sort.Slice(records, func(i, j int) bool {
 			return records[i].SSLRTT < records[j].SSLRTT
-			// return len(records[i].IP) < len(records[j].IP)
 		})
 		if cfg.scanIP {
 			ss := make([]string, len(records))
-			b := bytes.Buffer{}
+			b := new(bytes.Buffer)
 			for i, rec := range records {
 				if i%7 == 0 {
 					b.WriteString("\n")
