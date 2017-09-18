@@ -18,8 +18,6 @@ import (
 
 	quic "github.com/phuslu/quic-go"
 	"github.com/phuslu/quic-go/h2quic"
-	// quic "github.com/lucas-clemente/quic-go"
-	// "github.com/lucas-clemente/quic-go/h2quic"
 )
 
 type ScanRecord struct {
@@ -136,6 +134,7 @@ var (
 		InsecureSkipVerify: true,
 	}
 	g2pkp, _ = base64.StdEncoding.DecodeString("7HIpactkIAq2Y49orFOOQKurWxmmSFZhBCoQYcRhJ3Y=")
+	g3pkp, _ = base64.StdEncoding.DecodeString("f8NnEFZxQ4ExFOhSN7EiFWtiudZQVD2oY60uauV/n78=")
 )
 
 func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
@@ -215,7 +214,7 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 			return
 		}
 		pkp := sha256.Sum256(pcs[1].RawSubjectPublicKeyInfo)
-		if !bytes.Equal(g2pkp, pkp[:]) {
+		if !bytes.Equal(g2pkp, pkp[:]) && !bytes.Equal(g3pkp, pkp[:]) {
 			success <- false
 			return
 		}
@@ -231,7 +230,6 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 			req, _ := http.NewRequest(http.MethodHead, "https://"+verifyHost, nil)
 			req.Close = true
 			resp, err := hclient.Do(req)
-			// 无论是否有err，最好都close一下
 			if resp != nil && resp.Body != nil {
 				io.Copy(ioutil.Discard, resp.Body)
 				resp.Body.Close()
