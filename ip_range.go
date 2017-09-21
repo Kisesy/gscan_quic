@@ -147,10 +147,7 @@ func parseIPRangeFile(file string) ([]ipaddr.Prefix, error) {
 
 	if len(ipranges) > 0 {
 		sort.Slice(ipranges, func(i int, j int) bool {
-			ip1, ip2 := ipranges[i].String(), ipranges[j].String()
-			ip1 = ip1[:strings.LastIndexAny(ip1, ".:")]
-			ip2 = ip2[:strings.LastIndexAny(ip2, ".:")]
-			return ip1 == ip2
+			return strings.Compare(ipranges[i].String(), ipranges[j].String()) == -1
 		})
 		ipranges = dedup(ipranges)
 
