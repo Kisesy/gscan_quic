@@ -123,7 +123,7 @@ func parseIPRangeFile(file string) ([]ipaddr.Prefix, error) {
 		}
 	}
 
-	/*	IP段去重
+	/*	IP段去重	(此描述对当前算法不适用-2017/09/21)
 
 		"1.9.22.0-255"
 		"1.9.0.0/16"
@@ -144,34 +144,36 @@ func parseIPRangeFile(file string) ([]ipaddr.Prefix, error) {
 			  v
 		[1.9.0.0/16 3.3.0.0/16 1.1.1.0/24 203.0.113.0/24 2001:db8::1/128]
 	*/
-	sort.Slice(ipranges, func(i int, j int) bool {
-		return ipranges[i].NumNodes().Cmp(ipranges[j].NumNodes()) == 1
-	})
-	var newIpranges []ipaddr.Prefix
-	for _, iprange := range ipranges {
-		if !contains(newIpranges, iprange) {
-			newIpranges = append(newIpranges, iprange)
-		}
-	}
 
-	// 打乱IP段扫描顺序
-	if len(newIpranges) > 0 {
+	if len(ipranges) > 0 {
+		sort.Slice(ipranges, func(i int, j int) bool {
+			ip1, ip2 := ipranges[i].String(), ipranges[j].String()
+			ip1 = ip1[:strings.LastIndexAny(ip1, ".:")]
+			ip2 = ip2[:strings.LastIndexAny(ip2, ".:")]
+			return ip1 == ip2
+		})
+		ipranges = dedup(ipranges)
+
+		// 打乱IP段扫描顺序
 		rand.Seed(time.Now().Unix())
-		dest := make([]ipaddr.Prefix, len(newIpranges))
-		perm := rand.Perm(len(newIpranges))
+		dest := make([]ipaddr.Prefix, len(ipranges))
+		perm := rand.Perm(len(ipranges))
 		for i, v := range perm {
-			dest[v] = newIpranges[i]
+			dest[v] = ipranges[i]
 		}
-		newIpranges = dest
+		ipranges = dest
 	}
-	return newIpranges, nil
+	return ipranges, nil
 }
 
-func contains(a []ipaddr.Prefix, b ipaddr.Prefix) bool {
-	for i := len(a) - 1; i >= 0; i-- {
-		if a[i].Contains(&b) || a[i].Equal(&b) {
-			return true
+func dedup(s []ipaddr.Prefix) []ipaddr.Prefix {
+	out := s[:1]
+	t := s[0]
+	for _, s := range s[1:] {
+		if !t.Contains(&s) && !t.Equal(&s) {
+			out = append(out, s)
+			t = s
 		}
 	}
-	return false
+	return out
 }
