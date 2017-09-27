@@ -90,7 +90,7 @@ func splitIP(strline string) []ipaddr.Prefix {
 
 var sepReplacer = strings.NewReplacer(`","`, ",", `", "`, ",", "|", ",")
 
-func parseIPRangeFile(file string) ([]ipaddr.Prefix, error) {
+func parseIPRangeFile(file string) (chan ipaddr.Prefix, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -145,22 +145,24 @@ func parseIPRangeFile(file string) ([]ipaddr.Prefix, error) {
 		[1.9.0.0/16 3.3.0.0/16 1.1.1.0/24 203.0.113.0/24 2001:db8::1/128]
 	*/
 
-	if len(ipranges) > 0 {
-		sort.Slice(ipranges, func(i int, j int) bool {
-			return strings.Compare(ipranges[i].String(), ipranges[j].String()) == -1
-		})
-		ipranges = dedup(ipranges)
+	out := make(chan ipaddr.Prefix, 1)
+	go func() {
+		defer close(out)
+		if len(ipranges) > 0 {
+			sort.Slice(ipranges, func(i int, j int) bool {
+				return strings.Compare(ipranges[i].String(), ipranges[j].String()) == -1
+			})
+			ipranges = dedup(ipranges)
 
-		// 打乱IP段扫描顺序
-		rand.Seed(time.Now().Unix())
-		dest := make([]ipaddr.Prefix, len(ipranges))
-		perm := rand.Perm(len(ipranges))
-		for i, v := range perm {
-			dest[v] = ipranges[i]
+			// 打乱IP段扫描顺序
+			rand.Seed(time.Now().Unix())
+			perm := rand.Perm(len(ipranges))
+			for _, v := range perm {
+				out <- ipranges[v]
+			}
 		}
-		ipranges = dest
-	}
-	return ipranges, nil
+	}()
+	return out, nil
 }
 
 func dedup(s []ipaddr.Prefix) []ipaddr.Prefix {

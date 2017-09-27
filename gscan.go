@@ -126,7 +126,7 @@ func main() {
 		for i := 0; i < worker_count; i++ {
 			go testip_worker(ch, &options, &wg)
 		}
-		for _, iprange := range ipranges {
+		for iprange := range ipranges {
 			c := ipaddr.NewCursor([]ipaddr.Prefix{iprange})
 			for ip := c.First(); ip != nil; ip = c.Next() {
 				ch <- ip.IP.String()
