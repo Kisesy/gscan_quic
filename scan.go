@@ -178,7 +178,7 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 	defer tr.Close()
 
 	quicCfg := &quic.Config{
-		HandshakeTimeout: options.Config.ScanMaxSSLRTT - 500*time.Millisecond,
+		HandshakeTimeout: options.Config.ScanMaxSSLRTT,
 		// IdleTimeout:      options.Config.ScanMaxSSLRTT,
 		KeepAlive: false,
 	}
@@ -197,7 +197,6 @@ func testip_once(ip string, options *ScanOptions, record *ScanRecord) bool {
 
 	go func(chan bool) {
 		var err error
-		// quicSessn, err = quic.DialAddr(addr, tlsCfg, quicCfg)
 		quicSessn, err = quic.Dial(udpConn, udpAddr, addr, tlsCfg, quicCfg)
 		if err != nil {
 			success <- false
