@@ -5,7 +5,8 @@
 *.dylib
 *.zip
 *.7z
-*.txt
+
+out*.txt
 
 # Test binary, build with `go test -c`
 *.test
@@ -16,3 +17,4 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 gscan_quic/
+backup/

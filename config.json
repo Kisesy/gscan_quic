@@ -1,0 +1,86 @@
+{
+	// 注意:
+	// 扫描并发数 理论上设置越大扫的越快, 但是并不意味越大就可以扫到更多IP
+	// 大量的并发数, 会造成网络堵塞, 甚至触到系统网络的限制或造成路由器宕机而出现更多的问题
+	// 所以如果在你那里基本扫不到IP, 可以试着减小扫描并发数并增大超时时间
+
+	// 扫描并发数
+	"ScanWorker": 100,
+
+	// 是否启用 Ping, Ping 的参数可以在下面进行设置
+	"VerifyPing": false,
+	
+	// 每个IP的测试次数
+	"ScanCountPerIP": 1,
+
+	// 每次扫到的IP，都会在此目录下备份一个
+	"BackupDir": "./backup",
+
+	// 扫描方式, 可以设置为下面的任意一个, 大小写都可以
+	"Operation": "quic",
+
+	"Ping": {
+		"ScanMinPingRTT": 80,
+		"ScanMaxPingRTT": 800,
+	},
+
+	"QUIC": {
+		// ServerName 可以设置多项, 会随机选择一个
+		"ServerName": ["dns.google.com"],
+		// HTTPVerifyHosts 是 http 测试时使用的测试地址, 默认一个
+		// 如果设置多个, 将会依次进行测试
+		"HTTPVerifyHosts": ["dns.google.com"],
+		"HandshakeTimeout": 1000,
+		"ScanMinRTT": 0,
+		"ScanMaxRTT": 3000,
+		// 结果的限制数量, 比如: 设置成 100, 将会扫到100个IP后自动结束
+		"RecordLimit": 100,
+		// 输出结果的分隔符, 比如: 如果想要换行输出, 可以改为: \n
+		// 有个特殊的例外, 如果设置为 gop, 则会输出 "xxx", "xxx" 样式
+		"OutputSeparator": "gop",
+		// IP 或 IP 段文件
+		"InputFile": "./iprange_quic.txt",
+		// 输出的文件路径
+		"OutputFile": "./out_quic.txt",
+		// 扫描等级
+		// 1: 只是测试连接成功, 并且确定证书存在
+		// 2: 验证证书是否正确
+		// 3: 测试 HTTP 连接
+		"Level": 2,
+	},
+
+	// "TLS": {
+	// 	"ServerName": ["dns.google.com"],
+	// 	"HTTPVerifyHosts": ["dns.google.com"],
+	// 	"ScanMinRTT": 0,
+	// 	"ScanMaxRTT": 3000,
+	// 	"RecordLimit": 100,
+	// 	"OutputSeparator": "|",
+	// 	"InputFile": "./iprange_tls.txt",
+	// 	"OutputFile": "./out_tls.txt",
+	// 	"Level": 2,
+	// },
+
+	"SNI": {
+		// 注意, SNI 需要同时验证两个不同域名的 ServerName 才能正确确认
+		// 当然你也可以改成一个来简单确认
+		// 不要填封锁严重的域名, 比如 google 的域名
+		"ServerName": ["bing.com", "duckduckgo.com"],
+
+		// 测试 HTTP 访问时, 其实应该用这里的参数, 但是情况也许会变的复杂..
+		// 暂时未使用
+		// "HTTPVerifyHosts": ["dns.google.com"],
+		
+		// TLS 握手时间设置
+		"HandshakeTimeout": 3000,
+		"ScanMinRTT": 0,
+		"ScanMaxRTT": 3000,
+		"RecordLimit": 100,
+		"OutputSeparator": "|",
+		"InputFile": "./iprange_sni.txt",
+		"OutputFile": "./out_sni.txt",
+		// 1: 测试 tls 连接并握手
+		// 2: http 测试
+		"Level": 1,
+	},
+}

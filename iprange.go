@@ -145,7 +145,7 @@ func parseIPRangeFile(file string) (chan ipaddr.Prefix, error) {
 		[1.9.0.0/16 3.3.0.0/16 1.1.1.0/24 203.0.113.0/24 2001:db8::1/128]
 	*/
 
-	out := make(chan ipaddr.Prefix, 1)
+	out := make(chan ipaddr.Prefix, 200)
 	go func() {
 		defer close(out)
 		if len(ipranges) > 0 {
