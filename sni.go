@@ -54,7 +54,6 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 		}
 	}
 
-	sslRTT := time.Since(start)
-	record.SSLRTT = record.SSLRTT + sslRTT
+	record.RTT = record.RTT + time.Since(start)
 	return true
 }

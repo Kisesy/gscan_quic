@@ -3,15 +3,19 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/mikioh/ipaddr"
 )
 
 type ScanRecord struct {
 	IP      string
 	PingRTT time.Duration
-	SSLRTT  time.Duration
+	RTT     time.Duration
 
 	httpVerifyTimeout time.Duration
 }
@@ -32,7 +36,7 @@ func (options *ScanOptions) AddRecord(rec *ScanRecord) {
 	}
 	options.records = append(options.records, rec)
 	options.recordMutex.Unlock()
-	log.Printf("Found a record: IP=%s, SSLRTT=%s\n", rec.IP, rec.SSLRTT.String())
+	log.Printf("Found a record: IP=%s, RTT=%s\n", rec.IP, rec.RTT.String())
 }
 
 func (options *ScanOptions) IncScanCounter() {
@@ -59,7 +63,7 @@ func testip(ip string, config *GScanConfig) *ScanRecord {
 		}
 	}
 	record.PingRTT = record.PingRTT / time.Duration(config.ScanCountPerIP)
-	record.SSLRTT = record.SSLRTT / time.Duration(config.ScanCountPerIP)
+	record.RTT = record.RTT / time.Duration(config.ScanCountPerIP)
 	return record
 }
 
@@ -69,21 +73,16 @@ func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg
 		var pingRTT time.Duration
 		if options.Config.VerifyPing {
 			start := time.Now()
-			pingRTT = (options.Config.Ping.ScanMinPingRTT + options.Config.Ping.ScanMaxPingRTT) / 2
-			if options.Config.VerifyPing {
-				err := Ping(ip, options.Config.Ping.ScanMaxPingRTT)
-				if err != nil {
-					continue
-				}
-				end := time.Now()
-				if err == nil {
-					if options.Config.Ping.ScanMinPingRTT > 0 && end.Sub(start) < options.Config.Ping.ScanMinPingRTT {
-						continue
-					}
-					pingRTT = end.Sub(start)
-
-				}
+			// pingRTT = (options.Config.Ping.ScanMinPingRTT + options.Config.Ping.ScanMaxPingRTT) / 2
+			err := Ping(ip, options.Config.Ping.ScanMaxPingRTT)
+			if err != nil {
+				continue
 			}
+			pingRTT = time.Since(start)
+			if options.Config.Ping.ScanMinPingRTT > 0 && pingRTT < options.Config.Ping.ScanMinPingRTT {
+				continue
+			}
+
 		}
 
 		record := testip(ip, options.Config)
@@ -98,4 +97,50 @@ func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg
 		}
 		options.IncScanCounter()
 	}
+}
+
+func Scan(options *ScanOptions, cfg *ScanConfig, ipranges chan ipaddr.Prefix) {
+	log.Printf("Start scanning available IP\n")
+
+	startTime := time.Now()
+
+	var wg sync.WaitGroup
+	wg.Add(options.Config.ScanWorker)
+
+	wait := make(chan os.Signal, 1)
+	signal.Notify(wait, os.Interrupt, os.Kill)
+
+	evalCount := 0
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		ch := make(chan string, 100)
+		for i := 0; i < options.Config.ScanWorker; i++ {
+			go testip_worker(ctx, ch, options, &wg)
+		}
+		for iprange := range ipranges {
+			c := ipaddr.NewCursor([]ipaddr.Prefix{iprange})
+			for ip := c.First(); ip != nil; ip = c.Next() {
+				select {
+				case ch <- ip.IP.String():
+				case <-ctx.Done():
+					close(ch)
+					return
+				}
+				evalCount++
+				if options.RecordSize() >= cfg.RecordLimit {
+					close(wait)
+					return
+				}
+			}
+		}
+		close(ch)
+		wg.Wait()
+		close(wait)
+	}()
+	<-wait
+	cancel()
+
+	log.Printf("Scanned %d IP in %s, found %d records\n", evalCount, time.Since(startTime).String(), len(options.records))
 }

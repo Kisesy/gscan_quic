@@ -30,11 +30,11 @@
 		// HTTPVerifyHosts 是 http 测试时使用的测试地址, 默认一个
 		// 如果设置多个, 将会依次进行测试
 		"HTTPVerifyHosts": ["dns.google.com"],
-		"HandshakeTimeout": 1000,
+		"HandshakeTimeout": 3000,
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 3000,
 		// 结果的限制数量, 比如: 设置成 100, 将会扫到100个IP后自动结束
-		"RecordLimit": 100,
+		"RecordLimit": 200,
 		// 输出结果的分隔符, 比如: 如果想要换行输出, 可以改为: \n
 		// 有个特殊的例外, 如果设置为 gop, 则会输出 "xxx", "xxx" 样式
 		"OutputSeparator": "gop",
@@ -54,7 +54,7 @@
 	// 	"HTTPVerifyHosts": ["dns.google.com"],
 	// 	"ScanMinRTT": 0,
 	// 	"ScanMaxRTT": 3000,
-	// 	"RecordLimit": 100,
+	// 	"RecordLimit": 200,
 	// 	"OutputSeparator": "|",
 	// 	"InputFile": "./iprange_tls.txt",
 	// 	"OutputFile": "./out_tls.txt",
@@ -75,7 +75,7 @@
 		"HandshakeTimeout": 3000,
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 3000,
-		"RecordLimit": 100,
+		"RecordLimit": 200,
 		"OutputSeparator": "|",
 		"InputFile": "./iprange_sni.txt",
 		"OutputFile": "./out_sni.txt",

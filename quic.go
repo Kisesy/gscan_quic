@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"crypto/tls"
 	"io"
 	"io/ioutil"
@@ -37,13 +36,9 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		}
 	}()
 
-	tr := &h2quic.RoundTripper{DisableCompression: true}
-	defer tr.Close()
-
 	quicCfg := &quic.Config{
 		HandshakeTimeout: config.Quic.HandshakeTimeout * time.Millisecond,
-		// IdleTimeout:      config.ScanMaxSSLRTT,
-		KeepAlive: false,
+		KeepAlive:        false,
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
@@ -58,7 +53,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	udpConn.SetDeadline(time.Now().Add(config.Quic.ScanMaxRTT * time.Millisecond))
 	defer udpConn.Close()
 
-	go func(chan bool) {
+	go func() {
 		var err error
 		quicTlsCfg.ServerName = config.Quic.ServerName[rand.Intn(len(config.Quic.ServerName))]
 		quicSessn, err = quic.Dial(udpConn, udpAddr, addr, quicTlsCfg, quicCfg)
@@ -78,23 +73,27 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 			success <- false
 			return
 		}
+
 		// 验证证书
 		if config.Quic.Level > 1 { // 2
-			pkp := sha256.Sum256(pcs[1].RawSubjectPublicKeyInfo)
-			if !bytes.Equal(g2pkp, pkp[:]) && !bytes.Equal(g3pkp, pkp[:]) { // && !bytes.Equal(g3ecc, pkp[:]) {
+			pkp := pcs[1].RawSubjectPublicKeyInfo
+
+			if !bytes.Equal(g2pkp, pkp) && !bytes.Equal(g3pkp, pkp) { // && !bytes.Equal(g3ecc, pkp[:]) {
 				success <- false
 				return
 			}
 		}
 
-		tr.DialAddr = func(hostname string, tlsConfig *tls.Config, config *quic.Config) (quic.Session, error) {
-			return quicSessn, err
-		}
-		hclient := &http.Client{
-			Transport: tr,
-		}
-
 		if config.Quic.Level > 2 { // 3
+			tr := &h2quic.RoundTripper{DisableCompression: true}
+			defer tr.Close()
+
+			tr.DialAddr = func(hostname string, tlsConfig *tls.Config, config *quic.Config) (quic.Session, error) {
+				return quicSessn, err
+			}
+			hclient := &http.Client{
+				Transport: tr,
+			}
 			for _, verifyHost := range config.Quic.HTTPVerifyHosts {
 				req, _ := http.NewRequest(http.MethodHead, "https://"+verifyHost, nil)
 				req.Close = true
@@ -109,14 +108,14 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 				}
 			}
 		}
+
 		success <- true
-	}(success)
+	}()
 
 	if <-success == false {
 		return false
 	}
 
-	sslRTT := time.Since(start)
-	record.SSLRTT = record.SSLRTT + sslRTT
+	record.RTT = record.RTT + time.Since(start)
 	return true
 }

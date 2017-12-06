@@ -2,20 +2,15 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"flag"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/mikioh/ipaddr"
 )
 
 type PingConfig struct {
@@ -164,53 +159,11 @@ func main() {
 		log.Panicln(err)
 	}
 
-	log.Printf("Start scanning available IP\n")
-
-	startTime := time.Now()
-
-	var wg sync.WaitGroup
-	wg.Add(Config.ScanWorker)
-
-	wait := make(chan os.Signal, 1)
-	signal.Notify(wait, os.Interrupt, os.Kill)
-
-	evalCount := 0
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		ch := make(chan string, 100)
-		for i := 0; i < Config.ScanWorker; i++ {
-			go testip_worker(ctx, ch, &options, &wg)
-		}
-		for iprange := range ipranges {
-			c := ipaddr.NewCursor([]ipaddr.Prefix{iprange})
-			for ip := c.First(); ip != nil; ip = c.Next() {
-				select {
-				case ch <- ip.IP.String():
-				case <-ctx.Done():
-					close(ch)
-					return
-				}
-				evalCount++
-				if options.RecordSize() >= cfg.RecordLimit {
-					close(wait)
-					return
-				}
-			}
-		}
-		close(ch)
-		wg.Wait()
-		close(wait)
-	}()
-
-	<-wait
-	cancel()
-	log.Printf("Scanned %d IP in %s, found %d records\n", evalCount, time.Since(startTime).String(), len(options.records))
+	Scan(&options, cfg, ipranges)
 
 	if records := options.records; len(records) > 0 {
 		sort.Slice(records, func(i, j int) bool {
-			return records[i].SSLRTT < records[j].SSLRTT
+			return records[i].RTT < records[j].RTT
 		})
 		a := make([]string, len(records))
 		for i, r := range records {
