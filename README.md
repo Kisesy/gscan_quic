@@ -1,11 +1,11 @@
 
 # gscan-quic
 
- 一个Go语言实现的HTTPS IP可用性扫描工具， 主要作用于 Google Quic IP 的扫描
+一个 IP 可用性扫描工具
 
 ## 简单说明
-IP 段写在 iprange.conf 文件里, 一行一个<br>
-自己扫的时候可以换掉 iprange.conf 中自带的IP段, 因为这是测试用的, 不一定是真可用的
+
+因为支持多种类型的IP扫描, 所以 IP 段文件也是分开放的, 具体在 config.json 文件可以看到
 
 **IP段文件格式如下：**
 > (文件里除了注释符 # 以外, 不要出现其他特殊字符, 比如 // )
@@ -67,9 +67,6 @@ IP 段写在 iprange.conf 文件里, 一行一个<br>
     1.9.0.0/16
     1.1.1.0/24
 
-扫完的IP存放在 google_ip.txt 和类似 google_ip_20170714_18.24.55.txt 这种文件里<br>
-分别是 goagent 和 goproxy 格式的
-
 > **注意:**
 
 * 默认是有输出个数限制的, 可以设置配置文件里的RecordLimit
@@ -82,35 +79,14 @@ IP 段写在 iprange.conf 文件里, 一行一个<br>
 到 https://github.com/Kisesy/gscan_quic/releases 下载编译好的
 
 ## 配置说明
-一个完整的配置文件, json格式, 里面不要写注释
-(下面只是说明, 请以默认的配置文件为准)
 
-    {
-     "ScanWorker" : 100,         //启动的扫描worker个数（GoRoutine）
-     "ScanMinPingRTT" : 100,     //ping IP最小延迟，丢弃延迟很低的IP，延迟很低的IP不稳定，单位毫秒
-     "ScanMaxPingRTT" : 800,     //ping IP最大延迟，丢弃延迟很大的IP，单位毫秒
-     "ScanMaxSSLRTT":3000,       //最大SSL连接协商延迟 ***这个就是延迟时间***
-     "ScanCountPerIP" : 3,       //每个IP重试次数，每次都成功，才认为合法
- 
-     "Operation" : "ScanGoogleHosts",  //本次操作类型， 扫描IP或者扫描修复Hosts
-  
-     "ScanGoogleIP" :{
-        "SSLCertVerifyHosts" : [""],  //检查证书中域名, 这个未使用
-        "HTTPVerifyHosts" : ["dns.google.com"],        //HEAD HTTP请求检查域名 ***这个最好不要改***
-        "RecordLimit" :     10,                       //***输出IP个数限制***
-        "OutputSeparator":  "|",
-        "OutputFile" :      "./google_ip.txt"         //结果输出文件
-      },
-  
-     "ScanGoogleHosts":{
-        "InputHosts":"./test/hosts.input",           //输入Hosts
-        "OutputHosts": "./hosts.output",
-        "HTTPVerifyHosts" : ["www.google.com", "www.google.com.hk", "mail.google.com", "code.google.com",
-                            "drive.google.com", "plus.google.com", "play.google.com", "books.google.com",
-                            "calendar.google.com", "sites.google.com"]    //需要HEAD HTTP请求检查域名
-      } 
-    }
+参考 config.json 文件
+
+每次更新时最好覆盖掉 config.json 文件
+
+支持 gop 形式的个人配置 config.user.json, 所以为了防止每次修改, 可以自己新建一个.
 
 
+## 感谢
 
-### 改自 yinqiwen 大神的 https://github.com/yinqiwen/gscan 在此感谢
+改自 yinqiwen 大神的 https://github.com/yinqiwen/gscan 在此感谢
