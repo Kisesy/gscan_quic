@@ -90,7 +90,7 @@ func splitIP(strline string) []ipaddr.Prefix {
 
 var sepReplacer = strings.NewReplacer(`","`, ",", `", "`, ",", "|", ",")
 
-func parseIPRangeFile(file string) (chan ipaddr.Prefix, error) {
+func parseIPRangeFile(file string) (chan string, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func parseIPRangeFile(file string) (chan ipaddr.Prefix, error) {
 		[1.9.0.0/16 3.3.0.0/16 1.1.1.0/24 203.0.113.0/24 2001:db8::1/128]
 	*/
 
-	out := make(chan ipaddr.Prefix, 200)
+	out := make(chan string, 200)
 	go func() {
 		defer close(out)
 		if len(ipranges) > 0 {
@@ -158,8 +158,12 @@ func parseIPRangeFile(file string) (chan ipaddr.Prefix, error) {
 			rand.Seed(time.Now().Unix())
 			perm := rand.Perm(len(ipranges))
 			for _, v := range perm {
-				out <- ipranges[v]
+				c := ipaddr.NewCursor([]ipaddr.Prefix{ipranges[v]})
+				for ip := c.First(); ip != nil; ip = c.Next() {
+					out <- ip.IP.String()
+				}
 			}
+
 		}
 	}()
 	return out, nil

@@ -8,8 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/mikioh/ipaddr"
 )
 
 type ScanRecord struct {
@@ -99,48 +97,34 @@ func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg
 	}
 }
 
-func Scan(options *ScanOptions, cfg *ScanConfig, ipranges chan ipaddr.Prefix) {
-	log.Printf("Start scanning available IP\n")
-
-	startTime := time.Now()
-
+func Scan(options *ScanOptions, cfg *ScanConfig, ipQueue chan string) (evalCount int) {
 	var wg sync.WaitGroup
 	wg.Add(options.Config.ScanWorker)
 
 	wait := make(chan os.Signal, 1)
 	signal.Notify(wait, os.Interrupt, os.Kill)
 
-	evalCount := 0
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go func() {
-		ch := make(chan string, 100)
-		for i := 0; i < options.Config.ScanWorker; i++ {
-			go testip_worker(ctx, ch, options, &wg)
-		}
-		for iprange := range ipranges {
-			c := ipaddr.NewCursor([]ipaddr.Prefix{iprange})
-			for ip := c.First(); ip != nil; ip = c.Next() {
-				select {
-				case ch <- ip.IP.String():
-				case <-ctx.Done():
-					close(ch)
-					return
-				}
-				evalCount++
-				if options.RecordSize() >= cfg.RecordLimit {
-					close(wait)
-					return
-				}
-			}
-		}
-		close(ch)
-		wg.Wait()
-		close(wait)
-	}()
-	<-wait
-	cancel()
+	ch := make(chan string, 100)
+	for i := 0; i < options.Config.ScanWorker; i++ {
+		go testip_worker(ctx, ch, options, &wg)
+	}
 
-	log.Printf("Scanned %d IP in %s, found %d records\n", evalCount, time.Since(startTime).String(), len(options.records))
+	for ip := range ipQueue {
+		select {
+		case ch <- ip:
+		case <-wait:
+			return
+		}
+		evalCount++
+		if options.RecordSize() >= cfg.RecordLimit {
+			break
+		}
+	}
+
+	close(ch)
+	wg.Wait()
+	return evalCount
 }
