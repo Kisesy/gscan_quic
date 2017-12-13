@@ -22,11 +22,11 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	addr := net.JoinHostPort(ip, "443")
 
 	start := time.Now()
-	success := make(chan bool, 5)
+	result := make(chan bool, 5)
 
 	go func() {
 		<-time.After(config.Quic.ScanMaxRTT * time.Millisecond)
-		success <- false
+		result <- false
 	}()
 
 	var quicSessn quic.Session
@@ -59,32 +59,32 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		quicSessn, err = quic.Dial(udpConn, udpAddr, addr, quicTlsCfg, quicCfg)
 		if err != nil {
 			// log.Println(err)
-			success <- false
+			result <- false
 			return
 		}
-		// 只会验证证书存在
+		// lv1 只会验证证书是否存在
 		cs := quicSessn.ConnectionState()
 		if cs == nil {
-			success <- false
+			result <- false
 			return
 		}
 		pcs := cs.PeerCertificates
 		if len(pcs) < 2 {
-			success <- false
+			result <- false
 			return
 		}
 
-		// 验证证书
-		if config.Quic.Level > 1 { // 2
+		// lv2 验证证书是否正确
+		if config.Quic.Level > 1 {
 			pkp := pcs[1].RawSubjectPublicKeyInfo
-
 			if !bytes.Equal(g2pkp, pkp) && !bytes.Equal(g3pkp, pkp) { // && !bytes.Equal(g3ecc, pkp[:]) {
-				success <- false
+				result <- false
 				return
 			}
 		}
 
-		if config.Quic.Level > 2 { // 3
+		// lv3 使用 http 访问来验证
+		if config.Quic.Level > 2 {
 			tr := &h2quic.RoundTripper{DisableCompression: true}
 			defer tr.Close()
 
@@ -103,19 +103,15 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 					resp.Body.Close()
 				}
 				if err != nil || resp.StatusCode >= 400 {
-					success <- false
+					result <- false
 					return
 				}
 			}
 		}
 
-		success <- true
+		result <- true
 	}()
 
-	if <-success == false {
-		return false
-	}
-
 	record.RTT = record.RTT + time.Since(start)
-	return true
+	return <-result
 }

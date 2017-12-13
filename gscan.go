@@ -87,9 +87,8 @@ func initFiles(cfg *GScanConfig) {
 func main() {
 	defer func() {
 		if r := recover(); r != nil {
-			panic(fmt.Sprintf("panic: %s\n", r))
+			fmt.Println("panic:", r)
 		}
-		fmt.Println()
 		if runtime.GOOS == "windows" {
 			cmd := exec.Command("cmd", "/C", "pause")
 			cmd.Stdout = os.Stdout

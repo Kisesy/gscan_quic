@@ -97,12 +97,12 @@ func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg
 	}
 }
 
-func Scan(options *ScanOptions, cfg *ScanConfig, ipQueue chan string) (evalCount int) {
+func Scan(options *ScanOptions, cfg *ScanConfig, ipqueue chan string) (evalCount int) {
 	var wg sync.WaitGroup
 	wg.Add(options.Config.ScanWorker)
 
-	wait := make(chan os.Signal, 1)
-	signal.Notify(wait, os.Interrupt, os.Kill)
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -112,10 +112,10 @@ func Scan(options *ScanOptions, cfg *ScanConfig, ipQueue chan string) (evalCount
 		go testip_worker(ctx, ch, options, &wg)
 	}
 
-	for ip := range ipQueue {
+	for ip := range ipqueue {
 		select {
 		case ch <- ip:
-		case <-wait:
+		case <-interrupt:
 			return
 		}
 		evalCount++
