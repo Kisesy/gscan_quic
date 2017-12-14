@@ -27,12 +27,14 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 			tlsconn.Close()
 			return false
 		}
-		// pcs := tlsconn.ConnectionState().PeerCertificates
-		// if len(pcs) == 0 || pcs[0].Subject.CommonName != serverName {
-		// 	// log.Println(ip, "3")
-		// 	return false
-		// }
 		if config.Sni.Level > 1 {
+			pcs := tlsconn.ConnectionState().PeerCertificates
+			if len(pcs) == 0 || pcs[0].Subject.CommonName != serverName {
+				tlsconn.Close()
+				return false
+			}
+		}
+		if config.Sni.Level > 2 {
 			req, err := http.NewRequest(http.MethodHead, "https://"+serverName, nil)
 			if err != nil {
 				tlsconn.Close()

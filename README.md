@@ -3,12 +3,20 @@
 
 一个 IP 可用性扫描工具
 
+## 当前支持
+
+- [x] QUIC
+- [x] SNI
+- [ ] TLS
+- [ ] SOCKS4/SOCKS4A/SOCKS5
+- [ ] PING
+
 ## 简单说明
 
 因为支持多种类型的IP扫描, 所以 IP 段文件也是分开放的, 具体在 config.json 文件可以看到
 
 **IP段文件格式如下：**
-> (文件里除了注释符 # 以外, 不要出现其他特殊字符, 比如 // )
+> (文件里除了注释符 # 以外, 最好不要出现其他特殊字符)
 
     #注释
 
@@ -69,14 +77,11 @@
 
 > **注意:**
 
-* 默认是有输出个数限制的, 可以设置配置文件里的RecordLimit
+* 默认是有输出个数限制的, 可以设置配置文件里的 RecordLimit
 
-* 在扫描过程中是可以中断的, 只要按Ctrl+C就可以中断, 扫过的IP是会保留的
+* 在扫描过程中是可以中断的, 只要按 <kbd>Ctrl</kbd>+<kbd>C</kbd> 就可以中断, 扫过的IP是会保留的
 
 * 扫描IP段是随机的
-
-## 下载
-到 https://github.com/Kisesy/gscan_quic/releases 下载编译好的
 
 ## 配置说明
 
@@ -86,6 +91,8 @@
 
 支持 gop 形式的个人配置 config.user.json, 所以为了防止每次修改, 可以自己新建一个.
 
+## 下载
+到 https://github.com/Kisesy/gscan_quic/releases 下载编译好的
 
 ## 感谢
 

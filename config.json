@@ -71,8 +71,9 @@
 	"SNI": {
 		// 注意, SNI 需要同时验证两个不同域名的 ServerName 才能正确确认
 		// 当然你也可以改成一个来简单确认
-		// 不要填封锁严重的域名, 比如 google 的域名
-		"ServerName": ["bing.com", "duckduckgo.com"],
+		// 还有, 不要填封锁严重的域名, 比如 google 的域名
+		// 这里的域名最好是自行更改, 不要用默认的, 防检测
+		"ServerName": ["www.bing.com", "duckduckgo.com"],
 
 		// 测试 HTTP 访问时, 其实应该用这里的参数, 但是情况也许会变的复杂..
 		// 暂时未使用
@@ -85,8 +86,9 @@
 		"OutputSeparator": "|",
 		"InputFile": "./iprange_sni.txt",
 		"OutputFile": "./out_sni.txt",
-		// 1: 测试 tls 连接并握手
-		// 2: http 测试
+		// 1: 测试 tls 连接并握手成功
+		// 2: 证书验证
+		// 3: http 测试
 		"Level": 2,
 	},
 }
