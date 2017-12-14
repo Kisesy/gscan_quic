@@ -15,7 +15,7 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 	start := time.Now()
 
 	for _, serverName := range config.Sni.ServerName {
-		conn, err := net.DialTimeout("tcp", ip+":443", config.Sni.ScanMaxRTT*time.Millisecond)
+		conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Sni.ScanMaxRTT*time.Millisecond)
 		if err != nil {
 			return false
 		}
@@ -29,7 +29,7 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 		}
 		if config.Sni.Level > 1 {
 			pcs := tlsconn.ConnectionState().PeerCertificates
-			if len(pcs) == 0 || pcs[0].Subject.CommonName != serverName {
+			if pcs == nil || len(pcs) == 0 || pcs[0].Subject.CommonName != serverName {
 				tlsconn.Close()
 				return false
 			}

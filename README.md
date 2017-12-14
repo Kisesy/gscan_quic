@@ -7,7 +7,7 @@
 
 - [x] QUIC
 - [x] SNI
-- [ ] TLS
+- [x] TLS
 - [ ] SOCKS4/SOCKS4A/SOCKS5
 - [ ] PING
 

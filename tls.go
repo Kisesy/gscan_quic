@@ -1,7 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/base64"
+	"math/rand"
+	"net"
+	"net/http"
+	"net/http/httputil"
+	"time"
 )
 
 var (
@@ -10,7 +17,58 @@ var (
 	g3ecc, _ = base64.StdEncoding.DecodeString("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG4ANKJrwlpAPXThRcA3Z4XbkwQvWhj5J/kicXpbBQclS4uyuQ5iSOGKcuCRt8ralqREJXuRsnLZo0sIT680+VQ==")
 )
 
-func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
+var tlscfg = &tls.Config{
+	InsecureSkipVerify: true,
+	MinVersion:         tls.VersionTLS10,
+	MaxVersion:         tls.VersionTLS12,
+	CipherSuites: []uint16{
+		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+	},
+}
 
-	return false
+func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
+	start := time.Now()
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Tls.ScanMaxRTT*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+	serverName := config.Tls.ServerName[rand.Intn(len(config.Tls.ServerName))]
+	tlscfg.ServerName = serverName
+	tlsconn := tls.Client(conn, tlscfg)
+	defer tlsconn.Close()
+
+	tlsconn.SetDeadline(time.Now().Add(config.Tls.HandshakeTimeout * time.Millisecond))
+	if err = tlsconn.Handshake(); err != nil {
+		return false
+	}
+	if config.Tls.Level > 1 {
+		pcs := tlsconn.ConnectionState().PeerCertificates
+		if pcs == nil || len(pcs) < 3 {
+			return false
+		}
+		if org := pcs[0].Subject.Organization; len(org) == 0 || org[0] != "Google Inc" {
+			return false
+		}
+		pkp := pcs[1].RawSubjectPublicKeyInfo
+		if !bytes.Equal(g2pkp, pkp) && !bytes.Equal(g3pkp, pkp) { // && !bytes.Equal(g3ecc, pkp[:]) {
+			return false
+		}
+	}
+	if config.Tls.Level > 2 {
+		url := "https://" + serverName
+		req, _ := http.NewRequest(http.MethodHead, url, nil)
+		resp, err := httputil.NewClientConn(tlsconn, nil).Do(req)
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			return false
+		}
+	}
+	record.RTT = record.RTT + time.Since(start)
+	return true
 }

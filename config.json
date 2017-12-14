@@ -48,7 +48,7 @@
 		"InputFile": "./iprange_quic.txt",
 		// 输出的文件路径
 		"OutputFile": "./out_quic.txt",
-		// 扫描等级
+		// 验证等级
 		// 1: 只是测试连接成功, 并且确定证书存在
 		// 2: 验证证书是否正确
 		// 3: 测试 HTTP 连接
@@ -56,17 +56,23 @@
 		"Level": 2,
 	},
 
-	// "TLS": {
-	// 	"ServerName": ["dns.google.com"],
-	// 	"HTTPVerifyHosts": ["dns.google.com"],
-	// 	"ScanMinRTT": 0,
-	// 	"ScanMaxRTT": 3000,
-	// 	"RecordLimit": 200,
-	// 	"OutputSeparator": "|",
-	// 	"InputFile": "./iprange_tls.txt",
-	// 	"OutputFile": "./out_tls.txt",
-	// 	"Level": 2,
-	// },
+	// 暂时只支持 google IP
+	"TLS": {
+		// 只支持填写 google 的域名
+		"ServerName": ["dns.google.com"],
+		// "HTTPVerifyHosts": ["dns.google.com"],
+		"HandshakeTimeout": 2500,
+		"ScanMinRTT": 0,
+		"ScanMaxRTT": 3000,
+		"RecordLimit": 200,
+		"OutputSeparator": "|",
+		"InputFile": "./iprange_tls.txt",
+		"OutputFile": "./out_tls.txt",
+		// 1: 测试 tls 连接并握手成功
+		// 2: 证书验证
+		// 3: http 测试
+		"Level": 2,
+	},
 
 	"SNI": {
 		// 注意, SNI 需要同时验证两个不同域名的 ServerName 才能正确确认
