@@ -33,8 +33,8 @@
 		// ServerName 可以设置多项, 会随机选择一个
 		"ServerName": ["dns.google.com"],
 		// HTTPVerifyHosts 是 http 测试时使用的测试地址, 默认一个
-		// 如果设置多个, 将会依次进行测试
-		"HTTPVerifyHosts": ["dns.google.com"],
+		// 如果设置多个, 将会依次进行测试, (暂时未使用)
+		// "HTTPVerifyHosts": ["dns.google.com"],
 		// 握手超时时间, 单位: 毫秒
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,
@@ -84,7 +84,6 @@
 		// 测试 HTTP 访问时, 其实应该用这里的参数, 但是情况也许会变的复杂..
 		// 暂时未使用
 		// "HTTPVerifyHosts": ["dns.google.com"],
-		
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 3000,

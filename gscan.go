@@ -62,7 +62,7 @@ func initFiles(cfg *GScanConfig) {
 			cfg.BackupDir = filepath.Join(execFolder, cfg.BackupDir)
 		}
 		if _, err := os.Stat(cfg.BackupDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(cfg.BackupDir, 0644); err != nil {
+			if err := os.MkdirAll(cfg.BackupDir, 0755); err != nil {
 				log.Println(err)
 			}
 		}
@@ -115,8 +115,8 @@ func main() {
 		cfgfile = filepath.Join(execFolder, cfgfile)
 	}
 
-	var Config *GScanConfig
-	err := readJsonConfig(cfgfile, &Config)
+	Config := new(GScanConfig)
+	err := readJsonConfig(cfgfile, Config)
 	if err != nil {
 		log.Panicln(err)
 	}
