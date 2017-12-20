@@ -15,14 +15,14 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 	start := time.Now()
 
 	for _, serverName := range config.Sni.ServerName {
-		conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Sni.ScanMaxRTT*time.Millisecond)
+		conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Sni.ScanMaxRTT)
 		if err != nil {
 			return false
 		}
 
 		tlscfg.ServerName = serverName
 		tlsconn := tls.Client(conn, tlscfg)
-		tlsconn.SetDeadline(time.Now().Add(config.Sni.HandshakeTimeout * time.Millisecond))
+		tlsconn.SetDeadline(time.Now().Add(config.Sni.HandshakeTimeout))
 		if err = tlsconn.Handshake(); err != nil {
 			tlsconn.Close()
 			return false

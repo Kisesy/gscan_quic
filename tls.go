@@ -30,17 +30,18 @@ var tlscfg = &tls.Config{
 
 func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 	start := time.Now()
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Tls.ScanMaxRTT*time.Millisecond)
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Tls.ScanMaxRTT)
 	if err != nil {
 		return false
 	}
 	defer conn.Close()
+
 	serverName := config.Tls.ServerName[rand.Intn(len(config.Tls.ServerName))]
 	tlscfg.ServerName = serverName
 	tlsconn := tls.Client(conn, tlscfg)
 	defer tlsconn.Close()
 
-	tlsconn.SetDeadline(time.Now().Add(config.Tls.HandshakeTimeout * time.Millisecond))
+	tlsconn.SetDeadline(time.Now().Add(config.Tls.HandshakeTimeout))
 	if err = tlsconn.Handshake(); err != nil {
 		return false
 	}

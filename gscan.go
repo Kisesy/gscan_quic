@@ -56,7 +56,7 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
-func initFiles(cfg *GScanConfig) {
+func initConfig(cfg *GScanConfig) {
 	if cfg.EnableBackup {
 		if strings.HasPrefix(cfg.BackupDir, "./") {
 			cfg.BackupDir = filepath.Join(execFolder, cfg.BackupDir)
@@ -82,6 +82,10 @@ func initFiles(cfg *GScanConfig) {
 		if _, err := os.Stat(c.InputFile); os.IsNotExist(err) {
 			os.OpenFile(c.InputFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0644)
 		}
+
+		c.ScanMinRTT *= time.Millisecond
+		c.ScanMaxRTT *= time.Millisecond
+		c.HandshakeTimeout *= time.Millisecond
 	}
 }
 func main() {
@@ -121,7 +125,7 @@ func main() {
 		log.Panicln(err)
 	}
 
-	initFiles(Config)
+	initConfig(Config)
 
 	var cfg *ScanConfig
 	operation := strings.ToLower(Config.Operation)
@@ -158,7 +162,7 @@ func main() {
 
 	log.Printf("Start scanning available IP\n")
 	startTime := time.Now()
-	count := Scan(options, cfg, ipqueue)
+	count := StartScan(options, cfg, ipqueue)
 	log.Printf("Scanned %d IP in %s, found %d records\n", count, time.Since(startTime).String(), len(options.records))
 
 	if records := options.records; len(records) > 0 {

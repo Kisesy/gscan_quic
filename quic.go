@@ -30,11 +30,11 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	if err != nil {
 		return false
 	}
-	udpConn.SetDeadline(time.Now().Add(config.Quic.ScanMaxRTT * time.Millisecond))
+	udpConn.SetDeadline(time.Now().Add(config.Quic.ScanMaxRTT))
 	defer udpConn.Close()
 
 	quicCfg := &quic.Config{
-		HandshakeTimeout: config.Quic.HandshakeTimeout * time.Millisecond,
+		HandshakeTimeout: config.Quic.HandshakeTimeout,
 		KeepAlive:        false,
 	}
 

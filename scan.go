@@ -97,7 +97,7 @@ func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg
 	}
 }
 
-func Scan(options *ScanOptions, cfg *ScanConfig, ipqueue chan string) (evalCount int) {
+func StartScan(options *ScanOptions, cfg *ScanConfig, ipqueue chan string) (evalCount int) {
 	var wg sync.WaitGroup
 	wg.Add(options.Config.ScanWorker)
 
