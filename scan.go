@@ -38,9 +38,9 @@ func (options *ScanOptions) AddRecord(rec *ScanRecord) {
 }
 
 func (options *ScanOptions) IncScanCounter() {
-	atomic.AddInt32(&(options.scanCounter), 1)
-	if options.scanCounter%1000 == 0 {
-		log.Printf("Scanned %d IPs, Found %d records\n", options.scanCounter, options.RecordSize())
+	scanCounter := atomic.AddInt32(&(options.scanCounter), 1)
+	if scanCounter%1000 == 0 {
+		log.Printf("Scanned %d IPs, Found %d records\n", scanCounter, options.RecordSize())
 	}
 }
 

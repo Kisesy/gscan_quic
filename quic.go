@@ -14,10 +14,6 @@ import (
 	"github.com/phuslu/quic-go/h2quic"
 )
 
-var quicTlsCfg = &tls.Config{
-	InsecureSkipVerify: true,
-}
-
 func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	addr := net.JoinHostPort(ip, "443")
 
@@ -39,9 +35,11 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	}
 
 	serverName := config.Quic.ServerName[rand.Intn(len(config.Quic.ServerName))]
-	quicTlsCfg.ServerName = serverName
-
-	quicSessn, err := quic.Dial(udpConn, udpAddr, addr, quicTlsCfg, quicCfg)
+	tlsCfg := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         serverName,
+	}
+	quicSessn, err := quic.Dial(udpConn, udpAddr, addr, tlsCfg, quicCfg)
 	if err != nil {
 		return false
 	}

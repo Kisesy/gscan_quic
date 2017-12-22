@@ -17,17 +17,6 @@ var (
 	g3ecc, _ = base64.StdEncoding.DecodeString("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG4ANKJrwlpAPXThRcA3Z4XbkwQvWhj5J/kicXpbBQclS4uyuQ5iSOGKcuCRt8ralqREJXuRsnLZo0sIT680+VQ==")
 )
 
-var tlscfg = &tls.Config{
-	InsecureSkipVerify: true,
-	MinVersion:         tls.VersionTLS10,
-	MaxVersion:         tls.VersionTLS12,
-	CipherSuites: []uint16{
-		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-		tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
-		tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
-	},
-}
-
 func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 	start := time.Now()
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Tls.ScanMaxRTT)
@@ -37,7 +26,19 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 	defer conn.Close()
 
 	serverName := config.Tls.ServerName[rand.Intn(len(config.Tls.ServerName))]
-	tlscfg.ServerName = serverName
+
+	tlscfg := &tls.Config{
+		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS10,
+		MaxVersion:         tls.VersionTLS12,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+			tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+			tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+		},
+		ServerName: serverName,
+	}
+
 	tlsconn := tls.Client(conn, tlscfg)
 	defer tlsconn.Close()
 
