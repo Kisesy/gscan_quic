@@ -75,7 +75,8 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		hclient := &http.Client{
 			Transport: tr,
 		}
-		req, _ := http.NewRequest(http.MethodHead, "https://"+serverName, nil)
+		url := "https://" + config.Quic.HTTPVerifyHosts[rand.Intn(len(config.Quic.HTTPVerifyHosts))]
+		req, _ := http.NewRequest(http.MethodHead, url, nil)
 		req.Close = true
 		resp, err := hclient.Do(req)
 		if resp != nil && resp.Body != nil {

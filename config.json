@@ -33,9 +33,9 @@
 	"QUIC": {
 		// ServerName 可以设置多项, 会随机选择一个
 		"ServerName": ["dns.google.com"],
-		// HTTPVerifyHosts 是 http 测试时使用的测试地址, 默认一个
-		// 如果设置多个, 将会依次进行测试, (暂时未使用)
-		// "HTTPVerifyHosts": ["dns.google.com"],
+		// HTTPVerifyHosts 是 http 测试时使用的测试地址
+		// 如果设置多个, 将会随机选择一个进行测试
+		"HTTPVerifyHosts": ["dns.google.com"],
 		// 握手超时时间, 单位: 毫秒
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,
@@ -61,7 +61,7 @@
 	"TLS": {
 		// 只支持填写 google 的域名
 		"ServerName": ["dns.google.com"],
-		// "HTTPVerifyHosts": ["dns.google.com"],
+		"HTTPVerifyHosts": ["dns.google.com"],
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 3000,
@@ -81,9 +81,6 @@
 		// 还有, 不要填封锁严重的域名, 比如 google 的域名
 		// 这里的域名最好是自行更改, 不要用默认的, 防检测
 		"ServerName": ["www.bing.com", "duckduckgo.com"],
-
-		// 测试 HTTP 访问时, 其实应该用这里的参数, 但是情况也许会变的复杂..
-		// 暂时未使用
 		// "HTTPVerifyHosts": ["dns.google.com"],
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,

@@ -48,7 +48,7 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 	}
 	if config.Tls.Level > 1 {
 		pcs := tlsconn.ConnectionState().PeerCertificates
-		if pcs == nil || len(pcs) < 3 {
+		if pcs == nil || len(pcs) < 2 {
 			return false
 		}
 		if org := pcs[0].Subject.Organization; len(org) == 0 || org[0] != "Google Inc" {
@@ -60,7 +60,7 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 		}
 	}
 	if config.Tls.Level > 2 {
-		url := "https://" + serverName
+		url := "https://" + config.Tls.HTTPVerifyHosts[rand.Intn(len(config.Tls.HTTPVerifyHosts))]
 		req, _ := http.NewRequest(http.MethodHead, url, nil)
 		resp, err := httputil.NewClientConn(tlsconn, nil).Do(req)
 		if err != nil {

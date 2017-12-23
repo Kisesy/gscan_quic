@@ -50,7 +50,7 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 			// 	io.Copy(ioutil.Discard, resp.Body)
 			// 	resp.Body.Close()
 			// }
-			if resp.StatusCode != 200 {
+			if resp.StatusCode >= 400 {
 				tlsconn.Close()
 				return false
 			}
