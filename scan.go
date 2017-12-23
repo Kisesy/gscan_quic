@@ -72,8 +72,7 @@ func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg
 		if options.Config.VerifyPing {
 			start := time.Now()
 			// pingRTT = (options.Config.Ping.ScanMinPingRTT + options.Config.Ping.ScanMaxPingRTT) / 2
-			err := Ping(ip, options.Config.Ping.ScanMaxPingRTT)
-			if err != nil {
+			if err := Ping(ip, options.Config.Ping.ScanMaxPingRTT); err != nil {
 				continue
 			}
 			pingRTT = time.Since(start)
