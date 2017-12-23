@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	quic "github.com/phuslu/quic-go"
@@ -81,7 +82,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
 		}
-		if err != nil || resp.StatusCode >= 400 {
+		if err != nil || resp.StatusCode >= 400 || !strings.Contains(resp.Header.Get("Alt-Svc"), `quic=":443"`) {
 			return false
 		}
 	}
