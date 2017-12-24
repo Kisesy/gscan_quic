@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path"
 	"strings"
@@ -112,4 +113,23 @@ func mergeMap(m1 map[string]interface{}, m2 map[string]interface{}) error {
 	}
 
 	return nil
+}
+
+func randInt(l, u int) int {
+	return rand.Intn(u-l) + l
+}
+
+// llm.xadl
+// unupk.bfrf.pvi
+func randomHost() string {
+	a := make([][]byte, randInt(2, 4))
+	for i := range a {
+		m := randInt(3, 7)
+		b := make([]byte, m)
+		for j := 0; j < m; j++ {
+			b[j] = byte(randInt(97, 122))
+		}
+		a[i] = b
+	}
+	return string(bytes.Join(a, []byte{46}))
 }

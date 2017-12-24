@@ -27,7 +27,12 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 	}
 	defer conn.Close()
 
-	serverName := config.Tls.ServerName[rand.Intn(len(config.Tls.ServerName))]
+	var serverName string
+	if len(config.Tls.ServerName) == 0 {
+		serverName = randomHost()
+	} else {
+		serverName = config.Tls.ServerName[rand.Intn(len(config.Tls.ServerName))]
+	}
 
 	tlscfg := &tls.Config{
 		InsecureSkipVerify: true,

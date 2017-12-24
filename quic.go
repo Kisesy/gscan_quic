@@ -36,7 +36,13 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		KeepAlive:        false,
 	}
 
-	serverName := config.Quic.ServerName[rand.Intn(len(config.Quic.ServerName))]
+	var serverName string
+	if len(config.Quic.ServerName) == 0 {
+		serverName = randomHost()
+	} else {
+		serverName = config.Quic.ServerName[rand.Intn(len(config.Quic.ServerName))]
+	}
+
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 		ServerName:         serverName,

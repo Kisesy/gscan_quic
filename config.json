@@ -32,7 +32,9 @@
 
 	"QUIC": {
 		// ServerName 可以设置多项, 会随机选择一个
-		"ServerName": ["dns.google.com"],
+		// 默认空列表，随机生成域名格式字符串
+		// 如果要设置为空, 可以写为 [""]
+		"ServerName": [],
 		// HTTPVerifyHosts 是 http 测试时使用的测试地址
 		// 如果设置多个, 将会随机选择一个进行测试
 		"HTTPVerifyHosts": ["dns.google.com"],
@@ -59,8 +61,7 @@
 
 	// 暂时只支持 google IP
 	"TLS": {
-		// 只支持填写 google 的域名
-		"ServerName": ["dns.google.com"],
+		"ServerName": [],
 		"HTTPVerifyHosts": ["dns.google.com"],
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,
