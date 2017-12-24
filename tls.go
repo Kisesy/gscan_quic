@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
+	"io"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"time"
 )
 
@@ -61,14 +63,22 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 	}
 	if config.Tls.Level > 2 {
 		url := "https://" + config.Tls.HTTPVerifyHosts[rand.Intn(len(config.Tls.HTTPVerifyHosts))]
-		req, _ := http.NewRequest(http.MethodHead, url, nil)
-		resp, err := httputil.NewClientConn(tlsconn, nil).Do(req)
-		if err != nil {
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		req.Close = true
+		c := http.Client{
+			Transport: &http.Transport{
+				DialTLS: func(network, addr string) (net.Conn, error) { return tlsconn, nil },
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return errors.New("fuck redirect")
+			}}
+		resp, _ := c.Do(req)
+		if resp == nil || (resp.StatusCode < 200 || resp.StatusCode >= 400) {
 			return false
 		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			return false
+		if resp.Body != nil {
+			io.Copy(ioutil.Discard, resp.Body)
+			resp.Body.Close()
 		}
 	}
 	record.RTT = record.RTT + time.Since(start)

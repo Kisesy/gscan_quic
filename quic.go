@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -74,17 +75,20 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		}
 		hclient := &http.Client{
 			Transport: tr,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return errors.New("fuck redirect")
+			},
 		}
 		url := "https://" + config.Quic.HTTPVerifyHosts[rand.Intn(len(config.Quic.HTTPVerifyHosts))]
-		req, _ := http.NewRequest(http.MethodHead, url, nil)
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
 		req.Close = true
-		resp, err := hclient.Do(req)
-		if resp != nil && resp.Body != nil {
+		resp, _ := hclient.Do(req)
+		if resp == nil || (resp.StatusCode < 200 || resp.StatusCode >= 400) || !strings.Contains(resp.Header.Get("Alt-Svc"), `quic=":443"`) {
+			return false
+		}
+		if resp.Body != nil {
 			io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
-		}
-		if err != nil || resp.StatusCode >= 400 || !strings.Contains(resp.Header.Get("Alt-Svc"), `quic=":443"`) {
-			return false
 		}
 	}
 
