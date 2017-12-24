@@ -7,7 +7,7 @@ install:
 script:
 - export EXE=gscan_quic
 - export TAR_EXCLUDE="--exclude=*.go --exclude=*.bz2 --exclude=vendor"
-- export CGO_ENABLED=0  
+- export CGO_ENABLED=0
 - GOOS=windows GOARCH=386 go build -ldflags "-w -s"
 - tar cjf ${EXE}_windows_386-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}"  
 - GOOS=windows GOARCH=amd64 go build -ldflags "-w -s"
@@ -20,6 +20,8 @@ script:
 - tar cjf ${EXE}_linux_arm-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
 - GOOS=darwin GOARCH=amd64 go build -ldflags "-w -s"
 - tar cjf ${EXE}_macos_amd64-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE} --exclude "${EXE}.exe"
+
+- sha1sum *.bz2
 
 deploy:
   provider: releases
