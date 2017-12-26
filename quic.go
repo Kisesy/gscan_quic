@@ -16,6 +16,8 @@ import (
 	"github.com/phuslu/quic-go/h2quic"
 )
 
+var errNoSuchBucket = []byte("<?xml version='1.0' encoding='UTF-8'?><Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message></Error>")
+
 func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	addr := net.JoinHostPort(ip, "443")
 
@@ -93,8 +95,18 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 			return false
 		}
 		if resp.Body != nil {
-			io.Copy(ioutil.Discard, resp.Body)
-			resp.Body.Close()
+			defer resp.Body.Close()
+			// lv4 验证是否是 NoSuchBucket 错误
+
+			// 也许条件改为 || 更好
+			if config.Quic.Level > 3 && resp.Header.Get("Content-Type") == "application/xml; charset=UTF-8" {
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil || bytes.Equal(body, errNoSuchBucket) {
+					return false
+				}
+			} else {
+				io.Copy(ioutil.Discard, resp.Body)
+			}
 		}
 	}
 
