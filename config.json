@@ -62,6 +62,7 @@
 
 	// 暂时只支持 google IP
 	"TLS": {
+		// 同 QUIC 说明
 		"ServerName": [],
 		"HTTPVerifyHosts": ["dns.google.com"],
 		"HandshakeTimeout": 2500,
@@ -81,7 +82,7 @@
 		// 注意, SNI 需要同时验证两个不同域名的 ServerName 才能正确确认
 		// 当然你也可以改成一个来简单确认
 		// 还有, 不要填封锁严重的域名, 比如 google 的域名
-		// 这里的域名最好是自行更改, 不要用默认的, 防检测
+		// 这里的域名最好不用默认的, 防止检测
 		"ServerName": ["www.bing.com", "duckduckgo.com"],
 		// "HTTPVerifyHosts": ["dns.google.com"],
 		"HandshakeTimeout": 2500,

@@ -79,7 +79,6 @@ func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg
 			if options.Config.Ping.ScanMinPingRTT > 0 && pingRTT < options.Config.Ping.ScanMinPingRTT {
 				continue
 			}
-
 		}
 
 		record := testip(ip, options.Config)
