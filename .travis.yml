@@ -12,6 +12,8 @@ script:
 - export EXE=gscan_quic
 - export TAR_EXCLUDE="--exclude=*.go --exclude=*.bz2 --exclude=*.7z --exclude=*.xz --exclude=vendor"
 
+- echo ${TRAVIS_TAG} > Version.txt
+
 - export GOOS=windows GOARCH=386 && go build -ldflags "-w -s"
 - 7za a ${EXE}_${GOOS}_${GOARCH}-${TRAVIS_TAG}.7z -ms=on -mx=9 -r- -mmt -x'!*.go' -x'!*.7z' -x'!*.zip' -x'!vendor/' *
 - rm *.exe
@@ -29,9 +31,8 @@ script:
 - export GOOS=darwin GOARCH=amd64 && go build -ldflags "-w -s"
 - tar cjf ${EXE}_${GOOS}_${GOARCH}-${TRAVIS_TAG}.tar.bz2 * ${TAR_EXCLUDE}
 
-- sha1sum *.7z
-- sha1sum *.xz
-- sha1sum *.bz2
+- md5sum *.7z *.xz *.bz2 | tee md5sum
+- sha1sum *.7z *.xz *.bz2 | tee sha1sum
 
 deploy:
   provider: releases
@@ -42,6 +43,8 @@ deploy:
     - "*.7z"
     - "*.xz"
     - "*.bz2"
+    - "md5sum"
+    - "sha1sum"
   skip_cleanup: true
   on:
     tags: true
