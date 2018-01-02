@@ -188,7 +188,7 @@ func main() {
 			log.Printf("All results writed to %s\n", cfg.OutputFile)
 		}
 		if Config.EnableBackup {
-			filename := operation + "_" + time.Now().Format("20060102_150405") + ".txt"
+			filename := fmt.Sprintf("%s_%s_lv%d.txt", operation, time.Now().Format("20060102_150405"), cfg.Level)
 			bakfilename := filepath.Join(Config.BackupDir, filename)
 			if err := ioutil.WriteFile(bakfilename, b.Bytes(), 0644); err != nil {
 				log.Printf("Failed to write output file:%s for reason:%v\n", bakfilename, err)

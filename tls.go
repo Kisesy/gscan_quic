@@ -86,6 +86,10 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 			resp.Body.Close()
 		}
 	}
-	record.RTT = record.RTT + time.Since(start)
+	rtt := time.Since(start)
+	if rtt < config.Tls.ScanMinRTT {
+		return false
+	}
+	record.RTT += rtt
 	return true
 }

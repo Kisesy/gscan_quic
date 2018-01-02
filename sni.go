@@ -12,9 +12,9 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 	tlscfg := &tls.Config{
 		InsecureSkipVerify: true,
 	}
-	start := time.Now()
 
 	for _, serverName := range config.Sni.ServerName {
+		start := time.Now()
 		conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Sni.ScanMaxRTT)
 		if err != nil {
 			return false
@@ -55,10 +55,14 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 				return false
 			}
 		}
-		tlsconn.Close()
-	}
 
-	// record.RTT = record.RTT + time.Since(start)/time.Duration(len(config.Sni.ServerName))
-	record.RTT = record.RTT + time.Duration(int64(time.Since(start))/int64(len(config.Sni.ServerName)))
+		tlsconn.Close()
+
+		rtt := time.Since(start)
+		if rtt < config.Sni.ScanMinRTT {
+			return false
+		}
+		record.RTT += rtt
+	}
 	return true
 }

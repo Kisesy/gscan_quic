@@ -97,9 +97,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		if resp.Body != nil {
 			defer resp.Body.Close()
 			// lv4 验证是否是 NoSuchBucket 错误
-
-			// 也许条件改为 || 更好
-			if config.Quic.Level > 3 && resp.Header.Get("Content-Type") == "application/xml; charset=UTF-8" {
+			if config.Quic.Level > 3 && resp.Header.Get("Content-Type") == "application/xml; charset=UTF-8" { // 也许条件改为 || 更好
 				body, err := ioutil.ReadAll(resp.Body)
 				if err != nil || bytes.Equal(body, errNoSuchBucket) {
 					return false
@@ -110,6 +108,10 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		}
 	}
 
-	record.RTT = record.RTT + time.Since(start)
+	rtt := time.Since(start)
+	if rtt < config.Quic.ScanMinRTT {
+		return false
+	}
+	record.RTT += rtt
 	return true
 }
