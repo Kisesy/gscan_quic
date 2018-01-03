@@ -11,93 +11,81 @@ import (
 )
 
 type ScanRecord struct {
-	IP      string
-	PingRTT time.Duration
-	RTT     time.Duration
-
-	httpVerifyTimeout time.Duration
+	IP  string
+	RTT time.Duration
 }
 
-type ScanOptions struct {
-	Config *GScanConfig
-
-	recordMutex sync.Mutex
+type ScanRecords struct {
+	recordMutex sync.RWMutex
 	records     []*ScanRecord
-
 	scanCounter int32
 }
 
-func (options *ScanOptions) AddRecord(rec *ScanRecord) {
-	options.recordMutex.Lock()
-	if nil == options.records {
-		options.records = make([]*ScanRecord, 0)
-	}
-	options.records = append(options.records, rec)
-	options.recordMutex.Unlock()
+func (srs *ScanRecords) AddRecord(rec *ScanRecord) {
+	srs.recordMutex.Lock()
+	srs.records = append(srs.records, rec)
+	srs.recordMutex.Unlock()
 	log.Printf("Found a record: IP=%s, RTT=%s\n", rec.IP, rec.RTT.String())
 }
 
-func (options *ScanOptions) IncScanCounter() {
-	scanCounter := atomic.AddInt32(&(options.scanCounter), 1)
-	if scanCounter%1000 == 0 {
-		log.Printf("Scanned %d IPs, Found %d records\n", scanCounter, options.RecordSize())
+func (srs *ScanRecords) IncScanCounter() {
+	scanCount := atomic.AddInt32(&(srs.scanCounter), 1)
+	if scanCount%1000 == 0 {
+		log.Printf("Scanned %d IPs, Found %d records\n", scanCount, srs.RecordSize())
 	}
 }
 
-func (options *ScanOptions) RecordSize() int {
-	options.recordMutex.Lock()
-	defer options.recordMutex.Unlock()
-	return len(options.records)
+func (srs *ScanRecords) RecordSize() int {
+	srs.recordMutex.RLock()
+	defer srs.recordMutex.RUnlock()
+	return len(srs.records)
 }
 
-var testIPFunc func(ip string, config *GScanConfig, record *ScanRecord) bool
-
-func testip(ip string, config *GScanConfig) *ScanRecord {
-	record := new(ScanRecord)
-	record.IP = ip
-	for i := 0; i < config.ScanCountPerIP; i++ {
-		if !testIPFunc(ip, config, record) {
-			return nil
-		}
-	}
-	record.PingRTT = record.PingRTT / time.Duration(config.ScanCountPerIP)
-	record.RTT = record.RTT / time.Duration(config.ScanCountPerIP)
-	return record
+func (srs *ScanRecords) ScanCount() int32 {
+	return atomic.LoadInt32(&(srs.scanCounter))
 }
 
-func testip_worker(ctx context.Context, ch chan string, options *ScanOptions, wg *sync.WaitGroup) {
+var testIPFunc func(ip string, config *ScanConfig, record *ScanRecord) bool
+
+func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *ScanConfig, srs *ScanRecords, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+_s:
 	for ip := range ch {
-		var pingRTT time.Duration
-		if options.Config.VerifyPing {
+		srs.IncScanCounter()
+
+		if gcfg.VerifyPing {
 			start := time.Now()
-			// pingRTT = (options.Config.Ping.ScanMinPingRTT + options.Config.Ping.ScanMaxPingRTT) / 2
-			if err := Ping(ip, options.Config.Ping.ScanMaxPingRTT); err != nil {
+			if err := Ping(ip, gcfg.Ping.ScanMaxPingRTT); err != nil {
 				continue
 			}
-			pingRTT = time.Since(start)
-			if options.Config.Ping.ScanMinPingRTT > 0 && pingRTT < options.Config.Ping.ScanMinPingRTT {
+			if time.Since(start) < gcfg.Ping.ScanMinPingRTT {
 				continue
 			}
 		}
 
-		record := testip(ip, options.Config)
-		if record != nil {
-			record.PingRTT = record.PingRTT + pingRTT
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				options.AddRecord(record)
+		record := new(ScanRecord)
+		record.IP = ip
+		for i := 0; i < gcfg.ScanCountPerIP; i++ {
+			if !testIPFunc(ip, cfg, record) {
+				record = nil
+				continue _s
 			}
 		}
-		options.IncScanCounter()
+		record.RTT = record.RTT / time.Duration(gcfg.ScanCountPerIP)
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			srs.AddRecord(record)
+		}
 	}
 }
 
-func StartScan(options *ScanOptions, cfg *ScanConfig, ipqueue chan string) (evalCount int) {
+func StartScan(srs *ScanRecords, gcfg *GScanConfig, cfg *ScanConfig, ipqueue chan string) {
 	var wg sync.WaitGroup
-	wg.Add(options.Config.ScanWorker)
+	wg.Add(gcfg.ScanWorker)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -106,8 +94,8 @@ func StartScan(options *ScanOptions, cfg *ScanConfig, ipqueue chan string) (eval
 	defer cancel()
 
 	ch := make(chan string, 100)
-	for i := 0; i < options.Config.ScanWorker; i++ {
-		go testip_worker(ctx, ch, options, &wg)
+	for i := 0; i < gcfg.ScanWorker; i++ {
+		go testip_worker(ctx, ch, gcfg, cfg, srs, &wg)
 	}
 
 	for ip := range ipqueue {
@@ -116,13 +104,11 @@ func StartScan(options *ScanOptions, cfg *ScanConfig, ipqueue chan string) (eval
 		case <-interrupt:
 			return
 		}
-		evalCount++
-		if options.RecordSize() >= cfg.RecordLimit {
+		if srs.RecordSize() >= cfg.RecordLimit {
 			break
 		}
 	}
 
 	close(ch)
 	wg.Wait()
-	return evalCount
 }

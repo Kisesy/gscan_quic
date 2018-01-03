@@ -19,19 +19,19 @@ var (
 	g3ecc, _ = base64.StdEncoding.DecodeString("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG4ANKJrwlpAPXThRcA3Z4XbkwQvWhj5J/kicXpbBQclS4uyuQ5iSOGKcuCRt8ralqREJXuRsnLZo0sIT680+VQ==")
 )
 
-func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
+func testTls(ip string, config *ScanConfig, record *ScanRecord) bool {
 	start := time.Now()
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Tls.ScanMaxRTT)
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.ScanMaxRTT)
 	if err != nil {
 		return false
 	}
 	defer conn.Close()
 
 	var serverName string
-	if len(config.Tls.ServerName) == 0 {
+	if len(config.ServerName) == 0 {
 		serverName = randomHost()
 	} else {
-		serverName = config.Tls.ServerName[rand.Intn(len(config.Tls.ServerName))]
+		serverName = config.ServerName[rand.Intn(len(config.ServerName))]
 	}
 
 	tlscfg := &tls.Config{
@@ -49,11 +49,11 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 	tlsconn := tls.Client(conn, tlscfg)
 	defer tlsconn.Close()
 
-	tlsconn.SetDeadline(time.Now().Add(config.Tls.HandshakeTimeout))
+	tlsconn.SetDeadline(time.Now().Add(config.HandshakeTimeout))
 	if err = tlsconn.Handshake(); err != nil {
 		return false
 	}
-	if config.Tls.Level > 1 {
+	if config.Level > 1 {
 		pcs := tlsconn.ConnectionState().PeerCertificates
 		if pcs == nil || len(pcs) < 2 {
 			return false
@@ -66,8 +66,8 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 			return false
 		}
 	}
-	if config.Tls.Level > 2 {
-		url := "https://" + config.Tls.HTTPVerifyHosts[rand.Intn(len(config.Tls.HTTPVerifyHosts))]
+	if config.Level > 2 {
+		url := "https://" + config.HTTPVerifyHosts[rand.Intn(len(config.HTTPVerifyHosts))]
 		req, _ := http.NewRequest(http.MethodGet, url, nil)
 		req.Close = true
 		c := http.Client{
@@ -87,7 +87,7 @@ func testTls(ip string, config *GScanConfig, record *ScanRecord) bool {
 		}
 	}
 	rtt := time.Since(start)
-	if rtt < config.Tls.ScanMinRTT {
+	if rtt < config.ScanMinRTT {
 		return false
 	}
 	record.RTT += rtt

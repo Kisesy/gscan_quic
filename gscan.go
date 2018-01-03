@@ -119,25 +119,25 @@ func main() {
 		cfgfile = filepath.Join(execFolder, cfgfile)
 	}
 
-	Config := new(GScanConfig)
-	err := readJsonConfig(cfgfile, Config)
+	gcfg := new(GScanConfig)
+	err := readJsonConfig(cfgfile, gcfg)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	initConfig(Config)
+	initConfig(gcfg)
 
 	var cfg *ScanConfig
-	operation := strings.ToLower(Config.Operation)
+	operation := strings.ToLower(gcfg.Operation)
 	switch operation {
 	case "quic":
-		cfg = &Config.Quic
+		cfg = &gcfg.Quic
 		testIPFunc = testQuic
 	case "tls":
-		cfg = &Config.Tls
+		cfg = &gcfg.Tls
 		testIPFunc = testTls
 	case "sni":
-		cfg = &Config.Sni
+		cfg = &gcfg.Sni
 		testIPFunc = testSni
 	case "socks5":
 		// testIPFunc = testSocks5
@@ -149,10 +149,10 @@ func main() {
 		log.Panicln(err)
 	}
 
-	Config.Ping.ScanMinPingRTT = Config.Ping.ScanMinPingRTT * time.Millisecond
-	Config.Ping.ScanMaxPingRTT = Config.Ping.ScanMaxPingRTT * time.Millisecond
+	gcfg.Ping.ScanMinPingRTT = gcfg.Ping.ScanMinPingRTT * time.Millisecond
+	gcfg.Ping.ScanMaxPingRTT = gcfg.Ping.ScanMaxPingRTT * time.Millisecond
 
-	options := &ScanOptions{Config: Config}
+	srs := &ScanRecords{}
 
 	log.Printf("Start loading IP Range file: %s\n", iprangeFile)
 	ipqueue, err := parseIPRangeFile(iprangeFile)
@@ -162,10 +162,10 @@ func main() {
 
 	log.Printf("Start scanning available IP\n")
 	startTime := time.Now()
-	count := StartScan(options, cfg, ipqueue)
-	log.Printf("Scanned %d IP in %s, found %d records\n", count, time.Since(startTime).String(), len(options.records))
+	StartScan(srs, gcfg, cfg, ipqueue)
+	log.Printf("Scanned %d IP in %s, found %d records\n", srs.ScanCount(), time.Since(startTime).String(), len(srs.records))
 
-	if records := options.records; len(records) > 0 {
+	if records := srs.records; len(records) > 0 {
 		sort.Slice(records, func(i, j int) bool {
 			return records[i].RTT < records[j].RTT
 		})
@@ -187,9 +187,9 @@ func main() {
 		} else {
 			log.Printf("All results writed to %s\n", cfg.OutputFile)
 		}
-		if Config.EnableBackup {
+		if gcfg.EnableBackup {
 			filename := fmt.Sprintf("%s_%s_lv%d.txt", operation, time.Now().Format("20060102_150405"), cfg.Level)
-			bakfilename := filepath.Join(Config.BackupDir, filename)
+			bakfilename := filepath.Join(gcfg.BackupDir, filename)
 			if err := ioutil.WriteFile(bakfilename, b.Bytes(), 0644); err != nil {
 				log.Printf("Failed to write output file:%s for reason:%v\n", bakfilename, err)
 			} else {

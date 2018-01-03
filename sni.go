@@ -8,33 +8,33 @@ import (
 	"time"
 )
 
-func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
+func testSni(ip string, config *ScanConfig, record *ScanRecord) bool {
 	tlscfg := &tls.Config{
 		InsecureSkipVerify: true,
 	}
 
-	for _, serverName := range config.Sni.ServerName {
+	for _, serverName := range config.ServerName {
 		start := time.Now()
-		conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.Sni.ScanMaxRTT)
+		conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, "443"), config.ScanMaxRTT)
 		if err != nil {
 			return false
 		}
 
 		tlscfg.ServerName = serverName
 		tlsconn := tls.Client(conn, tlscfg)
-		tlsconn.SetDeadline(time.Now().Add(config.Sni.HandshakeTimeout))
+		tlsconn.SetDeadline(time.Now().Add(config.HandshakeTimeout))
 		if err = tlsconn.Handshake(); err != nil {
 			tlsconn.Close()
 			return false
 		}
-		if config.Sni.Level > 1 {
+		if config.Level > 1 {
 			pcs := tlsconn.ConnectionState().PeerCertificates
 			if pcs == nil || len(pcs) == 0 || pcs[0].Subject.CommonName != serverName {
 				tlsconn.Close()
 				return false
 			}
 		}
-		if config.Sni.Level > 2 {
+		if config.Level > 2 {
 			req, err := http.NewRequest(http.MethodHead, "https://"+serverName, nil)
 			if err != nil {
 				tlsconn.Close()
@@ -59,7 +59,7 @@ func testSni(ip string, config *GScanConfig, record *ScanRecord) bool {
 		tlsconn.Close()
 
 		rtt := time.Since(start)
-		if rtt < config.Sni.ScanMinRTT {
+		if rtt < config.ScanMinRTT {
 			return false
 		}
 		record.RTT += rtt

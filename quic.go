@@ -18,7 +18,7 @@ import (
 
 var errNoSuchBucket = []byte("<?xml version='1.0' encoding='UTF-8'?><Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message></Error>")
 
-func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
+func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 	addr := net.JoinHostPort(ip, "443")
 
 	start := time.Now()
@@ -30,19 +30,19 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	if err != nil {
 		return false
 	}
-	udpConn.SetDeadline(time.Now().Add(config.Quic.ScanMaxRTT))
+	udpConn.SetDeadline(time.Now().Add(config.ScanMaxRTT))
 	defer udpConn.Close()
 
 	quicCfg := &quic.Config{
-		HandshakeTimeout: config.Quic.HandshakeTimeout,
+		HandshakeTimeout: config.HandshakeTimeout,
 		KeepAlive:        false,
 	}
 
 	var serverName string
-	if len(config.Quic.ServerName) == 0 {
+	if len(config.ServerName) == 0 {
 		serverName = randomHost()
 	} else {
-		serverName = config.Quic.ServerName[rand.Intn(len(config.Quic.ServerName))]
+		serverName = config.ServerName[rand.Intn(len(config.ServerName))]
 	}
 
 	tlsCfg := &tls.Config{
@@ -66,7 +66,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	}
 
 	// lv2 验证证书是否正确
-	if config.Quic.Level > 1 {
+	if config.Level > 1 {
 		pkp := pcs[1].RawSubjectPublicKeyInfo
 		if !bytes.Equal(g2pkp, pkp) && !bytes.Equal(g3pkp, pkp) { // && !bytes.Equal(g3ecc, pkp[:]) {
 			return false
@@ -74,7 +74,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	}
 
 	// lv3 使用 http 访问来验证
-	if config.Quic.Level > 2 {
+	if config.Level > 2 {
 		tr := &h2quic.RoundTripper{DisableCompression: true}
 		defer tr.Close()
 
@@ -87,7 +87,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 				return errors.New("fuck redirect")
 			},
 		}
-		url := "https://" + config.Quic.HTTPVerifyHosts[rand.Intn(len(config.Quic.HTTPVerifyHosts))]
+		url := "https://" + config.HTTPVerifyHosts[rand.Intn(len(config.HTTPVerifyHosts))]
 		req, _ := http.NewRequest(http.MethodGet, url, nil)
 		req.Close = true
 		resp, _ := hclient.Do(req)
@@ -97,7 +97,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 		if resp.Body != nil {
 			defer resp.Body.Close()
 			// lv4 验证是否是 NoSuchBucket 错误
-			if config.Quic.Level > 3 && resp.Header.Get("Content-Type") == "application/xml; charset=UTF-8" { // 也许条件改为 || 更好
+			if config.Level > 3 && resp.Header.Get("Content-Type") == "application/xml; charset=UTF-8" { // 也许条件改为 || 更好
 				body, err := ioutil.ReadAll(resp.Body)
 				if err != nil || bytes.Equal(body, errNoSuchBucket) {
 					return false
@@ -109,7 +109,7 @@ func testQuic(ip string, config *GScanConfig, record *ScanRecord) bool {
 	}
 
 	rtt := time.Since(start)
-	if rtt < config.Quic.ScanMinRTT {
+	if rtt < config.ScanMinRTT {
 		return false
 	}
 	record.RTT += rtt
