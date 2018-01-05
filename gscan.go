@@ -22,6 +22,7 @@ type PingConfig struct {
 }
 
 type ScanConfig struct {
+	ScanCountPerIP   int
 	ServerName       []string
 	HTTPVerifyHosts  []string
 	HandshakeTimeout time.Duration
@@ -35,20 +36,17 @@ type ScanConfig struct {
 }
 
 type GScanConfig struct {
-	ScanWorker     int
-	VerifyPing     bool
-	ScanCountPerIP int
-	EnableBackup   bool
-	BackupDir      string
+	ScanWorker   int
+	VerifyPing   bool
+	EnableBackup bool
+	BackupDir    string
 
-	Operation string
-	Ping      PingConfig
-	Quic      ScanConfig
-	Tls       ScanConfig
-	Sni       ScanConfig
+	ScanMode string
+	Ping     PingConfig
+	Quic     ScanConfig
+	Tls      ScanConfig
+	Sni      ScanConfig
 }
-
-var execFolder = "./"
 
 func init() {
 	rand.Seed(time.Now().Unix())
@@ -56,18 +54,33 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
-func initConfig(cfg *GScanConfig) {
-	if cfg.EnableBackup {
-		if strings.HasPrefix(cfg.BackupDir, "./") {
-			cfg.BackupDir = filepath.Join(execFolder, cfg.BackupDir)
+func initConfig(cfgfile, execFolder string) *GScanConfig {
+	if strings.HasPrefix(cfgfile, "./") {
+		cfgfile = filepath.Join(execFolder, cfgfile)
+	}
+
+	gcfg := new(GScanConfig)
+	if err := readJsonConfig(cfgfile, gcfg); err != nil {
+		log.Panicln(err)
+	}
+
+	if gcfg.EnableBackup {
+		if strings.HasPrefix(gcfg.BackupDir, "./") {
+			gcfg.BackupDir = filepath.Join(execFolder, gcfg.BackupDir)
 		}
-		if _, err := os.Stat(cfg.BackupDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(cfg.BackupDir, 0755); err != nil {
+		if _, err := os.Stat(gcfg.BackupDir); os.IsNotExist(err) {
+			if err := os.MkdirAll(gcfg.BackupDir, 0755); err != nil {
 				log.Println(err)
 			}
 		}
 	}
-	cfgs := []*ScanConfig{&cfg.Quic, &cfg.Tls, &cfg.Sni}
+
+	gcfg.ScanMode = strings.ToLower(gcfg.ScanMode)
+
+	gcfg.Ping.ScanMinPingRTT = gcfg.Ping.ScanMinPingRTT * time.Millisecond
+	gcfg.Ping.ScanMaxPingRTT = gcfg.Ping.ScanMaxPingRTT * time.Millisecond
+
+	cfgs := []*ScanConfig{&gcfg.Quic, &gcfg.Tls, &gcfg.Sni}
 	for _, c := range cfgs {
 		if strings.HasPrefix(c.InputFile, "./") {
 			c.InputFile = filepath.Join(execFolder, c.InputFile)
@@ -87,7 +100,9 @@ func initConfig(cfg *GScanConfig) {
 		c.ScanMaxRTT *= time.Millisecond
 		c.HandshakeTimeout *= time.Millisecond
 	}
+	return gcfg
 }
+
 func main() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -108,6 +123,7 @@ func main() {
 	flag.StringVar(&cfgfile, "Config File", "./config.json", "Config file, json format")
 	flag.Parse()
 
+	var execFolder = "./"
 	if e, err := os.Executable(); err != nil {
 		log.Panicln(err)
 	} else {
@@ -115,21 +131,11 @@ func main() {
 	}
 	// execFolder = "./"
 
-	if strings.HasPrefix(cfgfile, "./") {
-		cfgfile = filepath.Join(execFolder, cfgfile)
-	}
-
-	gcfg := new(GScanConfig)
-	err := readJsonConfig(cfgfile, gcfg)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	initConfig(gcfg)
+	gcfg := initConfig(cfgfile, execFolder)
 
 	var cfg *ScanConfig
-	operation := strings.ToLower(gcfg.Operation)
-	switch operation {
+	scanMode := gcfg.ScanMode
+	switch scanMode {
 	case "quic":
 		cfg = &gcfg.Quic
 		testIPFunc = testQuic
@@ -148,9 +154,6 @@ func main() {
 	if _, err := os.Stat(iprangeFile); os.IsNotExist(err) {
 		log.Panicln(err)
 	}
-
-	gcfg.Ping.ScanMinPingRTT = gcfg.Ping.ScanMinPingRTT * time.Millisecond
-	gcfg.Ping.ScanMaxPingRTT = gcfg.Ping.ScanMaxPingRTT * time.Millisecond
 
 	srs := &ScanRecords{}
 
@@ -188,7 +191,7 @@ func main() {
 			log.Printf("All results writed to %s\n", cfg.OutputFile)
 		}
 		if gcfg.EnableBackup {
-			filename := fmt.Sprintf("%s_%s_lv%d.txt", operation, time.Now().Format("20060102_150405"), cfg.Level)
+			filename := fmt.Sprintf("%s_%s_lv%d.txt", scanMode, time.Now().Format("20060102_150405"), cfg.Level)
 			bakfilename := filepath.Join(gcfg.BackupDir, filename)
 			if err := ioutil.WriteFile(bakfilename, b.Bytes(), 0644); err != nil {
 				log.Printf("Failed to write output file:%s for reason:%v\n", bakfilename, err)

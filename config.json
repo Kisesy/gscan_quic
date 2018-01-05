@@ -14,16 +14,13 @@
 	// Ping 的参数可以在下面进行设置
 	"VerifyPing": false,
 	
-	// 每个IP的测试次数
-	"ScanCountPerIP": 1,
-
 	// 是否开启备份
 	// 每次扫到的IP，都会在此目录下备份一份
 	"EnableBackup": true,
 	"BackupDir": "./backup",
 
 	// 扫描方式, 可以设置为下面的任意一个, 大小写都可以
-	"Operation": "quic",
+	"ScanMode": "quic",
 
 	"Ping": {
 		"ScanMinPingRTT": 80,
@@ -31,6 +28,8 @@
 	},
 
 	"QUIC": {
+		// 每个IP的测试次数
+		"ScanCountPerIP": 1,
 		// ServerName 可以设置多项, 会随机选择一个
 		// 默认空列表，随机生成域名格式字符串
 		// 如果要设置为空, 可以写为 [""]
@@ -63,6 +62,7 @@
 	// 暂时只支持 google IP
 	"TLS": {
 		// 同 QUIC 说明
+		"ScanCountPerIP": 1,
 		"ServerName": [],
 		"HTTPVerifyHosts": ["dns.google.com"],
 		"HandshakeTimeout": 2500,
@@ -79,6 +79,7 @@
 	},
 
 	"SNI": {
+		"ScanCountPerIP": 1,
 		// 注意, SNI 需要同时验证两个不同域名的 ServerName 才能正确确认
 		// 当然你也可以改成一个来简单确认
 		// 还有, 不要填封锁严重的域名, 比如 google 的域名

@@ -29,7 +29,7 @@ func (srs *ScanRecords) AddRecord(rec *ScanRecord) {
 }
 
 func (srs *ScanRecords) IncScanCounter() {
-	scanCount := atomic.AddInt32(&(srs.scanCounter), 1)
+	scanCount := atomic.AddInt32(&srs.scanCounter, 1)
 	if scanCount%1000 == 0 {
 		log.Printf("Scanned %d IPs, Found %d records\n", scanCount, srs.RecordSize())
 	}
@@ -42,15 +42,26 @@ func (srs *ScanRecords) RecordSize() int {
 }
 
 func (srs *ScanRecords) ScanCount() int32 {
-	return atomic.LoadInt32(&(srs.scanCounter))
+	return atomic.LoadInt32(&srs.scanCounter)
 }
 
 var testIPFunc func(ip string, config *ScanConfig, record *ScanRecord) bool
 
+func testip(ip string, config *ScanConfig) *ScanRecord {
+	record := new(ScanRecord)
+	for i := 0; i < config.ScanCountPerIP; i++ {
+		if !testIPFunc(ip, config, record) {
+			return nil
+		}
+	}
+	record.IP = ip
+	record.RTT = record.RTT / time.Duration(config.ScanCountPerIP)
+	return record
+}
+
 func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *ScanConfig, srs *ScanRecords, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-_s:
 	for ip := range ch {
 		srs.IncScanCounter()
 
@@ -64,21 +75,14 @@ _s:
 			}
 		}
 
-		record := new(ScanRecord)
-		record.IP = ip
-		for i := 0; i < gcfg.ScanCountPerIP; i++ {
-			if !testIPFunc(ip, cfg, record) {
-				record = nil
-				continue _s
+		record := testip(ip, cfg)
+		if record != nil {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				srs.AddRecord(record)
 			}
-		}
-		record.RTT = record.RTT / time.Duration(gcfg.ScanCountPerIP)
-
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			srs.AddRecord(record)
 		}
 	}
 }
