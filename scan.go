@@ -67,10 +67,10 @@ func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *
 
 		if gcfg.VerifyPing {
 			start := time.Now()
-			if err := Ping(ip, gcfg.Ping.ScanMaxPingRTT); err != nil {
+			if err := Ping(ip, gcfg.ScanMaxPingRTT); err != nil {
 				continue
 			}
-			if time.Since(start) < gcfg.Ping.ScanMinPingRTT {
+			if time.Since(start) < gcfg.ScanMinPingRTT {
 				continue
 			}
 		}

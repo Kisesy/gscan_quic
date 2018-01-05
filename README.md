@@ -8,8 +8,8 @@
 - [x] QUIC
 - [x] SNI
 - [x] TLS
+- [x] PING
 - [ ] SOCKS4/SOCKS4A/SOCKS5
-- [ ] PING
 
 ## 简单说明
 

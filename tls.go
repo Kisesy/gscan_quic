@@ -86,10 +86,10 @@ func testTls(ip string, config *ScanConfig, record *ScanRecord) bool {
 			resp.Body.Close()
 		}
 	}
-	rtt := time.Since(start)
-	if rtt < config.ScanMinRTT {
-		return false
+
+	if rtt := time.Since(start); rtt > config.ScanMinRTT {
+		record.RTT += rtt
+		return true
 	}
-	record.RTT += rtt
-	return true
+	return false
 }

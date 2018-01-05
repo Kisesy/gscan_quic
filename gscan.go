@@ -16,11 +16,6 @@ import (
 	"time"
 )
 
-type PingConfig struct {
-	ScanMinPingRTT time.Duration
-	ScanMaxPingRTT time.Duration
-}
-
 type ScanConfig struct {
 	ScanCountPerIP   int
 	ServerName       []string
@@ -36,13 +31,15 @@ type ScanConfig struct {
 }
 
 type GScanConfig struct {
-	ScanWorker   int
-	VerifyPing   bool
-	EnableBackup bool
-	BackupDir    string
+	ScanWorker     int
+	VerifyPing     bool
+	ScanMinPingRTT time.Duration
+	ScanMaxPingRTT time.Duration
+	EnableBackup   bool
+	BackupDir      string
 
 	ScanMode string
-	Ping     PingConfig
+	Ping     ScanConfig
 	Quic     ScanConfig
 	Tls      ScanConfig
 	Sni      ScanConfig
@@ -76,11 +73,14 @@ func initConfig(cfgfile, execFolder string) *GScanConfig {
 	}
 
 	gcfg.ScanMode = strings.ToLower(gcfg.ScanMode)
+	if gcfg.ScanMode == "ping" {
+		gcfg.VerifyPing = false
+	}
 
-	gcfg.Ping.ScanMinPingRTT = gcfg.Ping.ScanMinPingRTT * time.Millisecond
-	gcfg.Ping.ScanMaxPingRTT = gcfg.Ping.ScanMaxPingRTT * time.Millisecond
+	gcfg.ScanMinPingRTT = gcfg.ScanMinPingRTT * time.Millisecond
+	gcfg.ScanMaxPingRTT = gcfg.ScanMaxPingRTT * time.Millisecond
 
-	cfgs := []*ScanConfig{&gcfg.Quic, &gcfg.Tls, &gcfg.Sni}
+	cfgs := []*ScanConfig{&gcfg.Quic, &gcfg.Tls, &gcfg.Sni, &gcfg.Ping}
 	for _, c := range cfgs {
 		if strings.HasPrefix(c.InputFile, "./") {
 			c.InputFile = filepath.Join(execFolder, c.InputFile)
@@ -145,6 +145,9 @@ func main() {
 	case "sni":
 		cfg = &gcfg.Sni
 		testIPFunc = testSni
+	case "ping":
+		cfg = &gcfg.Ping
+		testIPFunc = testPing
 	case "socks5":
 		// testIPFunc = testSocks5
 	default:

@@ -14,6 +14,18 @@ import (
 	"time"
 )
 
+func testPing(ip string, config *ScanConfig, record *ScanRecord) bool {
+	start := time.Now()
+	if err := Pinger(ip, config.ScanMaxRTT); err != nil {
+		return false
+	}
+	if rtt := time.Since(start); rtt > config.ScanMinRTT {
+		record.RTT += rtt
+		return true
+	}
+	return false
+}
+
 const (
 	icmpv4EchoRequest = 8
 	icmpv4EchoReply   = 0
@@ -127,14 +139,24 @@ func Ping(address string, timeout time.Duration) error {
 }
 
 func Pinger(address string, timeout time.Duration) error {
-	c, err := net.Dial("ip4:icmp", address)
+	typ := icmpv4EchoRequest
+	network := "ip4:icmp"
+
+	isIpv6 := false
+	if ip := net.ParseIP(address); ip != nil && ip.To4() == nil {
+		typ = icmpv6EchoRequest
+		network = "ip6:ipv6-icmp"
+		isIpv6 = true
+	}
+
+	c, err := net.Dial(network, address)
 	if err != nil {
 		return ErrPingConnFailed
 	}
-	deadline := time.Now().Add(timeout)
 	defer c.Close()
+	deadline := time.Now().Add(timeout)
+	c.SetReadDeadline(deadline)
 
-	typ := icmpv4EchoRequest
 	xid, xseq := os.Getpid()&0xffff, 1
 	wb, err := (&icmpMessage{
 		Type: typ, Code: 0,
@@ -152,12 +174,14 @@ func Pinger(address string, timeout time.Duration) error {
 	var m *icmpMessage
 	rb := make([]byte, 20+len(wb))
 	for {
-		read_timeout := deadline.Sub(time.Now())
-		c.SetReadDeadline(time.Now().Add(read_timeout))
+		// read_timeout := deadline.Sub(time.Now())
+		// c.SetReadDeadline(time.Now().Add(read_timeout))
 		if _, err = c.Read(rb); err != nil {
 			return err
 		}
-		rb = ipv4Payload(rb)
+		if !isIpv6 {
+			rb = ipv4Payload(rb)
+		}
 		if m, err = parseICMPMessage(rb); err != nil {
 			return err
 		}

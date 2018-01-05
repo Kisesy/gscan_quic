@@ -108,10 +108,9 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 		}
 	}
 
-	rtt := time.Since(start)
-	if rtt < config.ScanMinRTT {
-		return false
+	if rtt := time.Since(start); rtt > config.ScanMinRTT {
+		record.RTT += rtt
+		return true
 	}
-	record.RTT += rtt
-	return true
+	return false
 }

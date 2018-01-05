@@ -10,10 +10,12 @@
 	// 扫描并发数
 	"ScanWorker": 100,
 
-	// 是否启用 Ping, 每次扫描 tls、quic...前都会先 ping 一下
-	// Ping 的参数可以在下面进行设置
+	// 是否启用 Ping, 每次扫描 Tls、Quic...前都会先 ping 一下
 	"VerifyPing": false,
-	
+	// Ping 的参数
+	"ScanMinPingRTT": 80,
+	"ScanMaxPingRTT": 800,
+
 	// 是否开启备份
 	// 每次扫到的IP，都会在此目录下备份一份
 	"EnableBackup": true,
@@ -22,9 +24,16 @@
 	// 扫描方式, 可以设置为下面的任意一个, 大小写都可以
 	"ScanMode": "quic",
 
+	// 如果设置为 ping, VerifyPing 会自动关闭
+	// 还有 IP 不要带端口...
 	"Ping": {
-		"ScanMinPingRTT": 80,
-		"ScanMaxPingRTT": 800,
+		"ScanCountPerIP": 1,
+		"ScanMinRTT": 0,
+		"ScanMaxRTT": 1000,
+		"RecordLimit": 10000,
+		"OutputSeparator": "\r\n",
+		"InputFile": "./iprange_ping.txt",
+		"OutputFile": "./out_ping.txt",
 	},
 
 	"QUIC": {
@@ -42,7 +51,7 @@
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 3000,
 		// 结果的限制数量, 比如: 设置成 100, 将会扫到100个IP后自动结束
-		"RecordLimit": 200,
+		"RecordLimit": 10000,
 		// 输出结果的分隔符, 比如: 如果想要换行输出, 可以改为: \n
 		// 有个特殊的例外, 如果设置为 gop, 则会输出 "xxx", "xxx" 样式
 		"OutputSeparator": "gop",
@@ -68,7 +77,7 @@
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 3000,
-		"RecordLimit": 200,
+		"RecordLimit": 10000,
 		"OutputSeparator": "|",
 		"InputFile": "./iprange_tls.txt",
 		"OutputFile": "./out_tls.txt",
@@ -89,8 +98,8 @@
 		"HandshakeTimeout": 2500,
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 3000,
-		"RecordLimit": 200,
-		"OutputSeparator": "|",
+		"RecordLimit": 10000,
+		"OutputSeparator": "\r\n",
 		"InputFile": "./iprange_sni.txt",
 		"OutputFile": "./out_sni.txt",
 		// 1: 测试 tls 连接并握手成功
