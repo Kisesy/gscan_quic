@@ -61,7 +61,7 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 		return false
 	}
 	pcs := cs.PeerCertificates
-	if pcs == nil && len(pcs) < 2 {
+	if len(pcs) < 2 {
 		return false
 	}
 
