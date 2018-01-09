@@ -25,13 +25,13 @@
 	"ScanMode": "quic",
 
 	// 如果设置为 ping, VerifyPing 会自动关闭
-	// 还有 IP 不要带端口...
 	"Ping": {
 		"ScanCountPerIP": 1,
 		"ScanMinRTT": 0,
 		"ScanMaxRTT": 1000,
 		"RecordLimit": 10000,
 		"OutputSeparator": "\r\n",
+		// 支持带端口格式的IP, 只是为了使用方便, 并不是真的支持端口, 端口会被自动去除
 		"InputFile": "./iprange_ping.txt",
 		"OutputFile": "./out_ping.txt",
 	},
