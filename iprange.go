@@ -81,6 +81,12 @@ func splitIP(strline string) []ipaddr.Prefix {
 		return nil
 	} else {
 		// "xxx.xxx.xxx.xxx"
+		// 如果IP带有端口, 那么就分离端口
+		if i := strings.LastIndex(strline, ":"); i != -1 {
+			if c, err := ipaddr.Parse(strline[:i]); err == nil {
+				return c.List()
+			}
+		}
 		begin = strline
 		end = strline
 	}
