@@ -1,7 +1,7 @@
 language: go
 
 go:
-- tip
+- 1.9
 
 before_install:
 - go get github.com/Kisesy/gscan_quic

@@ -19,13 +19,8 @@ import (
 var errNoSuchBucket = []byte("<?xml version='1.0' encoding='UTF-8'?><Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message></Error>")
 
 func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
-	addr := net.JoinHostPort(ip, "443")
-
 	start := time.Now()
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		return false
-	}
+
 	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		return false
@@ -49,6 +44,9 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 		InsecureSkipVerify: true,
 		ServerName:         serverName,
 	}
+
+	udpAddr := &net.UDPAddr{IP: net.ParseIP(ip), Port: 443}
+	addr := net.JoinHostPort(serverName, "443")
 	quicSessn, err := quic.Dial(udpConn, udpAddr, addr, tlsCfg, quicCfg)
 	if err != nil {
 		return false
