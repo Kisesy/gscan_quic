@@ -2,9 +2,9 @@ package protocol
 
 import "time"
 
-// MaxPacketSize is the maximum packet size, including the public header, that we use for sending packets
-// This is the value used by Chromium for a QUIC packet sent using IPv6 (for IPv4 it would be 1370)
-const MaxPacketSize ByteCount = 1350
+// MaxPacketSize is the maximum packet size that we use for sending packets.
+// It includes the QUIC packet header, but excludes the UDP and IP header.
+const MaxPacketSize ByteCount = 1200
 
 // NonForwardSecurePacketSizeReduction is the number of bytes a non forward-secure packet has to be smaller than a forward-secure packet
 // This makes sure that those packets can always be retransmitted without splitting the contained StreamFrames
@@ -56,11 +56,11 @@ const DefaultMaxReceiveConnectionFlowControlWindowClient = 15 * (1 << 20) // 15 
 // This is the value that Chromium is using
 const ConnectionFlowControlMultiplier = 1.5
 
-// MaxStreamsPerConnection is the maximum value accepted for the number of streams per connection
-const MaxStreamsPerConnection = 100
+// WindowUpdateThreshold is the fraction of the receive window that has to be consumed before an higher offset is advertised to the client
+const WindowUpdateThreshold = 0.25
 
-// MaxIncomingDynamicStreamsPerConnection is the maximum value accepted for the incoming number of dynamic streams per connection
-const MaxIncomingDynamicStreamsPerConnection = 100
+// MaxIncomingStreams is the maximum number of streams that a peer may open
+const MaxIncomingStreams = 100
 
 // MaxStreamsMultiplier is the slack the client is allowed for the maximum number of streams per connection, needed e.g. when packets are out of order or dropped. The minimum of this procentual increase and the absolute increment specified by MaxStreamsMinimumIncrement is used.
 const MaxStreamsMultiplier = 1.1
@@ -70,7 +70,7 @@ const MaxStreamsMinimumIncrement = 10
 
 // MaxNewStreamIDDelta is the maximum difference between and a newly opened Stream and the highest StreamID that a client has ever opened
 // note that the number of streams is half this value, since the client can only open streams with open StreamID
-const MaxNewStreamIDDelta = 4 * MaxStreamsPerConnection
+const MaxNewStreamIDDelta = 4 * MaxIncomingStreams
 
 // MaxSessionUnprocessedPackets is the max number of packets stored in each session that are not yet processed.
 const MaxSessionUnprocessedPackets = DefaultMaxCongestionWindow
@@ -81,17 +81,14 @@ const SkipPacketAveragePeriodLength PacketNumber = 500
 // MaxTrackedSkippedPackets is the maximum number of skipped packet numbers the SentPacketHandler keep track of for Optimistic ACK attack mitigation
 const MaxTrackedSkippedPackets = 10
 
-// STKExpiryTime is the valid time of a source address token
-const STKExpiryTime = 24 * time.Hour
+// CookieExpiryTime is the valid time of a cookie
+const CookieExpiryTime = 24 * time.Hour
 
 // MaxTrackedSentPackets is maximum number of sent packets saved for either later retransmission or entropy calculation
 const MaxTrackedSentPackets = 2 * DefaultMaxCongestionWindow
 
 // MaxTrackedReceivedAckRanges is the maximum number of ACK ranges tracked
 const MaxTrackedReceivedAckRanges = DefaultMaxCongestionWindow
-
-// MaxPacketsReceivedBeforeAckSend is the number of packets that can be received before an ACK frame is sent
-const MaxPacketsReceivedBeforeAckSend = 20
 
 // MaxNonRetransmittablePackets is the maximum number of non-retransmittable packets that we send in a row
 const MaxNonRetransmittablePackets = 19
@@ -113,6 +110,9 @@ const CryptoParameterMaxLength = 4000
 // EphermalKeyLifetime is the lifetime of the ephermal key during the handshake, see handshake.getEphermalKEX.
 const EphermalKeyLifetime = time.Minute
 
+// MinRemoteIdleTimeout is the minimum value that we accept for the remote idle timeout
+const MinRemoteIdleTimeout = 5 * time.Second
+
 // DefaultIdleTimeout is the default idle timeout
 const DefaultIdleTimeout = 30 * time.Second
 
@@ -125,3 +125,9 @@ const ClosedSessionDeleteTimeout = time.Minute
 
 // NumCachedCertificates is the number of cached compressed certificate chains, each taking ~1K space
 const NumCachedCertificates = 128
+
+// MinStreamFrameSize is the minimum size that has to be left in a packet, so that we add another STREAM frame.
+// This avoids splitting up STREAM frames into small pieces, which has 2 advantages:
+// 1. it reduces the framing overhead
+// 2. it reduces the head-of-line blocking, when a packet is lost
+const MinStreamFrameSize ByteCount = 128

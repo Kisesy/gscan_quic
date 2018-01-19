@@ -7,44 +7,39 @@ import (
 	"github.com/phuslu/quic-go/internal/utils"
 )
 
-// A WindowUpdateFrame in QUIC
-type WindowUpdateFrame struct {
+type windowUpdateFrame struct {
 	StreamID   protocol.StreamID
 	ByteOffset protocol.ByteCount
 }
 
-//Write writes a RST_STREAM frame
-func (f *WindowUpdateFrame) Write(b *bytes.Buffer, version protocol.VersionNumber) error {
+// ParseWindowUpdateFrame parses a WINDOW_UPDATE frame
+// The frame returned is
+// * a MAX_STREAM_DATA frame, if the WINDOW_UPDATE applies to a stream
+// * a MAX_DATA frame, if the WINDOW_UPDATE applies to the connection
+func ParseWindowUpdateFrame(r *bytes.Reader, _ protocol.VersionNumber) (Frame, error) {
+	if _, err := r.ReadByte(); err != nil { // read the TypeByte
+		return nil, err
+	}
+	streamID, err := utils.BigEndian.ReadUint32(r)
+	if err != nil {
+		return nil, err
+	}
+	offset, err := utils.BigEndian.ReadUint64(r)
+	if err != nil {
+		return nil, err
+	}
+	if streamID == 0 {
+		return &MaxDataFrame{ByteOffset: protocol.ByteCount(offset)}, nil
+	}
+	return &MaxStreamDataFrame{
+		StreamID:   protocol.StreamID(streamID),
+		ByteOffset: protocol.ByteCount(offset),
+	}, nil
+}
+
+func (f *windowUpdateFrame) Write(b *bytes.Buffer, _ protocol.VersionNumber) error {
 	b.WriteByte(0x4)
-	utils.GetByteOrder(version).WriteUint32(b, uint32(f.StreamID))
-	utils.GetByteOrder(version).WriteUint64(b, uint64(f.ByteOffset))
+	utils.BigEndian.WriteUint32(b, uint32(f.StreamID))
+	utils.BigEndian.WriteUint64(b, uint64(f.ByteOffset))
 	return nil
-}
-
-// MinLength of a written frame
-func (f *WindowUpdateFrame) MinLength(version protocol.VersionNumber) (protocol.ByteCount, error) {
-	return 1 + 4 + 8, nil
-}
-
-// ParseWindowUpdateFrame parses a RST_STREAM frame
-func ParseWindowUpdateFrame(r *bytes.Reader, version protocol.VersionNumber) (*WindowUpdateFrame, error) {
-	frame := &WindowUpdateFrame{}
-
-	// read the TypeByte
-	if _, err := r.ReadByte(); err != nil {
-		return nil, err
-	}
-
-	sid, err := utils.GetByteOrder(version).ReadUint32(r)
-	if err != nil {
-		return nil, err
-	}
-	frame.StreamID = protocol.StreamID(sid)
-
-	byteOffset, err := utils.GetByteOrder(version).ReadUint64(r)
-	if err != nil {
-		return nil, err
-	}
-	frame.ByteOffset = protocol.ByteCount(byteOffset)
-	return frame, nil
 }

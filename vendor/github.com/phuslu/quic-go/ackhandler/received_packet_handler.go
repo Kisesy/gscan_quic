@@ -1,18 +1,15 @@
 package ackhandler
 
 import (
-	"errors"
 	"time"
 
 	"github.com/phuslu/quic-go/internal/protocol"
 	"github.com/phuslu/quic-go/internal/wire"
 )
 
-var errInvalidPacketNumber = errors.New("ReceivedPacketHandler: Invalid packet number")
-
 type receivedPacketHandler struct {
 	largestObserved             protocol.PacketNumber
-	lowerLimit                  protocol.PacketNumber
+	ignoreBelow                 protocol.PacketNumber
 	largestObservedReceivedTime time.Time
 
 	packetHistory *receivedPacketHistory
@@ -38,16 +35,12 @@ func NewReceivedPacketHandler(version protocol.VersionNumber) ReceivedPacketHand
 }
 
 func (h *receivedPacketHandler) ReceivedPacket(packetNumber protocol.PacketNumber, shouldInstigateAck bool) error {
-	if packetNumber == 0 {
-		return errInvalidPacketNumber
-	}
-
 	if packetNumber > h.largestObserved {
 		h.largestObserved = packetNumber
 		h.largestObservedReceivedTime = time.Now()
 	}
 
-	if packetNumber <= h.lowerLimit {
+	if packetNumber < h.ignoreBelow {
 		return nil
 	}
 
@@ -58,11 +51,11 @@ func (h *receivedPacketHandler) ReceivedPacket(packetNumber protocol.PacketNumbe
 	return nil
 }
 
-// SetLowerLimit sets a lower limit for acking packets.
-// Packets with packet numbers smaller or equal than p will not be acked.
-func (h *receivedPacketHandler) SetLowerLimit(p protocol.PacketNumber) {
-	h.lowerLimit = p
-	h.packetHistory.DeleteUpTo(p)
+// IgnoreBelow sets a lower limit for acking packets.
+// Packets with packet numbers smaller than p will not be acked.
+func (h *receivedPacketHandler) IgnoreBelow(p protocol.PacketNumber) {
+	h.ignoreBelow = p
+	h.packetHistory.DeleteBelow(p)
 }
 
 func (h *receivedPacketHandler) maybeQueueAck(packetNumber protocol.PacketNumber, shouldInstigateAck bool) {
@@ -77,15 +70,6 @@ func (h *receivedPacketHandler) maybeQueueAck(packetNumber protocol.PacketNumber
 		h.ackQueued = true
 	}
 
-	if h.version < protocol.Version39 {
-		// Always send an ack every 20 packets in order to allow the peer to discard
-		// information from the SentPacketManager and provide an RTT measurement.
-		// From QUIC 39, this is not needed anymore, since the peer will regularly send a retransmittable packet.
-		if h.packetsReceivedSinceLastAck >= protocol.MaxPacketsReceivedBeforeAckSend {
-			h.ackQueued = true
-		}
-	}
-
 	// if the packet number is smaller than the largest acked packet, it must have been reported missing with the last ACK
 	// note that it cannot be a duplicate because they're already filtered out by ReceivedPacket()
 	if h.lastAck != nil && packetNumber < h.lastAck.LargestAcked {
@@ -93,7 +77,7 @@ func (h *receivedPacketHandler) maybeQueueAck(packetNumber protocol.PacketNumber
 	}
 
 	// check if a new missing range above the previously was created
-	if h.lastAck != nil && h.packetHistory.GetHighestAckRange().FirstPacketNumber > h.lastAck.LargestAcked {
+	if h.lastAck != nil && h.packetHistory.GetHighestAckRange().First > h.lastAck.LargestAcked {
 		h.ackQueued = true
 	}
 
@@ -121,7 +105,7 @@ func (h *receivedPacketHandler) GetAckFrame() *wire.AckFrame {
 	ackRanges := h.packetHistory.GetAckRanges()
 	ack := &wire.AckFrame{
 		LargestAcked:       h.largestObserved,
-		LowestAcked:        ackRanges[len(ackRanges)-1].FirstPacketNumber,
+		LowestAcked:        ackRanges[len(ackRanges)-1].First,
 		PacketReceivedTime: h.largestObservedReceivedTime,
 	}
 
