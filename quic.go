@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -79,11 +78,14 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 		tr.DialAddr = func(hostname string, tlsConfig *tls.Config, config *quic.Config) (quic.Session, error) {
 			return quicSessn, err
 		}
+		// 设置超时
+		udpConn.SetReadDeadline(time.Now().Add(config.ScanMaxRTT - time.Since(start)))
 		hclient := &http.Client{
 			Transport: tr,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return errors.New("fuck redirect")
+				return http.ErrUseLastResponse
 			},
+			// Timeout: config.ScanMaxRTT - time.Since(start),
 		}
 		url := "https://" + config.HTTPVerifyHosts[rand.Intn(len(config.HTTPVerifyHosts))]
 		req, _ := http.NewRequest(http.MethodGet, url, nil)

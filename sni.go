@@ -40,6 +40,7 @@ func testSni(ip string, config *ScanConfig, record *ScanRecord) bool {
 				tlsconn.Close()
 				return false
 			}
+			tlsconn.SetDeadline(time.Now().Add(config.ScanMaxRTT - time.Since(start)))
 			resp, err := httputil.NewClientConn(tlsconn, nil).Do(req)
 			if err != nil {
 				tlsconn.Close()

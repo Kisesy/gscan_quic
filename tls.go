@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
-	"errors"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -75,8 +74,10 @@ func testTls(ip string, config *ScanConfig, record *ScanRecord) bool {
 				DialTLS: func(network, addr string) (net.Conn, error) { return tlsconn, nil },
 			},
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return errors.New("fuck redirect")
-			}}
+				return http.ErrUseLastResponse
+			},
+			Timeout: config.ScanMaxRTT - time.Since(start),
+		}
 		resp, _ := c.Do(req)
 		if resp == nil || (resp.StatusCode < 200 || resp.StatusCode >= 400) {
 			return false

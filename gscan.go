@@ -108,6 +108,7 @@ func main() {
 		if r := recover(); r != nil {
 			fmt.Println("panic:", r)
 		}
+		fmt.Println()
 		if runtime.GOOS == "windows" {
 			cmd := exec.Command("cmd", "/C", "pause")
 			cmd.Stdout = os.Stdout
