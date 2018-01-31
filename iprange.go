@@ -105,6 +105,10 @@ func parseIPRangeFile(file string) (chan string, error) {
 
 	ipranges := make([]ipaddr.Prefix, 0)
 	scanner := bufio.NewScanner(f)
+	// 一行最大 4MB
+	buf := make([]byte, 1024*1024*4)
+	scanner.Buffer(buf, 1024*1024*4)
+
 	for scanner.Scan() {
 		line := strings.TrimFunc(scanner.Text(), func(r rune) bool {
 			switch r {
