@@ -113,11 +113,12 @@ func main() {
 			cmd := exec.Command("cmd", "/C", "pause")
 			cmd.Stdout = os.Stdout
 			cmd.Stdin = os.Stdin
-			cmd.Run()
-		} else {
-			fmt.Println("Press [Enter] to exit...")
-			fmt.Scanln()
-		}
+			// 改为 start, 程序可以正常退出, 这样一些程序监视工具可以正常测到程序结束了
+			cmd.Start()
+		} // else {
+		// 	fmt.Println("Press [Enter] to exit...")
+		// 	fmt.Scanln()
+		// }
 	}()
 
 	var cfgfile string
