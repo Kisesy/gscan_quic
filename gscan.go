@@ -35,6 +35,7 @@ type GScanConfig struct {
 	VerifyPing     bool
 	ScanMinPingRTT time.Duration
 	ScanMaxPingRTT time.Duration
+	DisablePause   bool
 	EnableBackup   bool
 	BackupDir      string
 
@@ -104,21 +105,24 @@ func initConfig(cfgfile, execFolder string) *GScanConfig {
 }
 
 func main() {
+	var disablePause bool
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("panic:", r)
 		}
 		fmt.Println()
-		if runtime.GOOS == "windows" {
-			cmd := exec.Command("cmd", "/C", "pause")
-			cmd.Stdout = os.Stdout
-			cmd.Stdin = os.Stdin
-			// 改为 start, 程序可以正常退出, 这样一些程序监视工具可以正常测到程序结束了
-			cmd.Start()
-		} // else {
-		// 	fmt.Println("Press [Enter] to exit...")
-		// 	fmt.Scanln()
-		// }
+		if !disablePause {
+			if runtime.GOOS == "windows" {
+				cmd := exec.Command("cmd", "/C", "pause")
+				cmd.Stdout = os.Stdout
+				cmd.Stdin = os.Stdin
+				// 改为 start, 程序可以正常退出, 这样一些程序监视工具可以正常测到程序结束了
+				cmd.Start()
+			} else {
+				fmt.Println("Press [Enter] to exit...")
+				fmt.Scanln()
+			}
+		}
 	}()
 
 	var cfgfile string
@@ -134,6 +138,7 @@ func main() {
 	// execFolder = "./"
 
 	gcfg := initConfig(cfgfile, execFolder)
+	disablePause = gcfg.DisablePause
 
 	var cfg *ScanConfig
 	scanMode := gcfg.ScanMode

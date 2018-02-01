@@ -20,6 +20,9 @@
 	// 每次扫到的IP，都会在此目录下备份一份
 	"EnableBackup": true,
 	"BackupDir": "./backup",
+	
+	// 是否禁用结束扫描时的命令行暂停
+	"DisablePause": false,
 
 	// 扫描方式, 可以设置为下面的任意一个, 大小写都可以
 	"ScanMode": "quic",
