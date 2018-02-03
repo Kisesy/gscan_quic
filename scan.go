@@ -81,8 +81,11 @@ func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *
 			case <-ctx.Done():
 				return
 			default:
-				srs.AddRecord(record)
 			}
+			if srs.RecordSize() > cfg.RecordLimit {
+				return
+			}
+			srs.AddRecord(record)
 		}
 	}
 }
