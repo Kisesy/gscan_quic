@@ -62,6 +62,9 @@ func testip(ip string, config *ScanConfig) *ScanRecord {
 func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *ScanConfig, srs *ScanRecords, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	ticker := time.NewTimer(cfg.ScanMaxRTT + 100*time.Millisecond)
+	defer ticker.Stop()
+
 	for ip := range ch {
 		srs.IncScanCounter()
 
@@ -75,17 +78,29 @@ func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *
 			}
 		}
 
-		record := testip(ip, cfg)
-		if record != nil {
-			select {
-			case <-ctx.Done():
-				return
-			default:
+		if srs.RecordSize() > cfg.RecordLimit {
+			return
+		}
+
+		ticker.Reset(cfg.ScanMaxRTT + 100*time.Millisecond)
+
+		record := make(chan *ScanRecord, 1)
+		go func() {
+			r := testip(ip, cfg)
+			if r != nil {
+				if srs.RecordSize() > cfg.RecordLimit {
+					return
+				}
+				srs.AddRecord(r)
 			}
-			if srs.RecordSize() > cfg.RecordLimit {
-				return
-			}
-			srs.AddRecord(record)
+			record <- r
+		}()
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		case <-record:
 		}
 	}
 }
@@ -100,6 +115,11 @@ func StartScan(srs *ScanRecords, gcfg *GScanConfig, cfg *ScanConfig, ipqueue cha
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	go func() {
+		<-interrupt
+		cancel()
+	}()
+
 	ch := make(chan string, 100)
 	for i := 0; i < gcfg.ScanWorker; i++ {
 		go testip_worker(ctx, ch, gcfg, cfg, srs, &wg)
@@ -108,7 +128,7 @@ func StartScan(srs *ScanRecords, gcfg *GScanConfig, cfg *ScanConfig, ipqueue cha
 	for ip := range ipqueue {
 		select {
 		case ch <- ip:
-		case <-interrupt:
+		case <-ctx.Done():
 			return
 		}
 		if srs.RecordSize() >= cfg.RecordLimit {
