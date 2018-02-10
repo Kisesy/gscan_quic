@@ -78,29 +78,26 @@ func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *
 			}
 		}
 
-		if srs.RecordSize() > cfg.RecordLimit {
-			return
-		}
-
-		ticker.Reset(cfg.ScanMaxRTT + 100*time.Millisecond)
-
-		record := make(chan *ScanRecord, 1)
+		done := make(chan struct{}, 1)
 		go func() {
 			r := testip(ip, cfg)
 			if r != nil {
-				if srs.RecordSize() > cfg.RecordLimit {
+				if srs.RecordSize() >= cfg.RecordLimit {
+					close(done)
 					return
 				}
 				srs.AddRecord(r)
 			}
-			record <- r
+			done <- struct{}{}
 		}()
 
+		ticker.Reset(cfg.ScanMaxRTT + 100*time.Millisecond)
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-		case <-record:
+			log.Println(ip, "timeout")
+		case <-done:
 		}
 	}
 }
