@@ -68,7 +68,7 @@
 		// 3: 测试 HTTP 连接
 		// 4: 验证是否是 NoSuchBucket 错误
 		// (2.x版默认等级为3, 所以如果lv2搜到的IP不能用, 可以改为 3)
-		"Level": 3,
+		"Level": 4,
 	},
 
 	// 暂时只支持 google IP

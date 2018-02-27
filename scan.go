@@ -62,8 +62,11 @@ func testip(ip string, config *ScanConfig) *ScanRecord {
 func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *ScanConfig, srs *ScanRecords, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	ticker := time.NewTimer(cfg.ScanMaxRTT + 100*time.Millisecond)
-	defer ticker.Stop()
+	timer := time.NewTimer(cfg.ScanMaxRTT + 100*time.Millisecond)
+	defer timer.Stop()
+
+	ctx, cancal := context.WithCancel(ctx)
+	defer cancal()
 
 	for ip := range ch {
 		srs.IncScanCounter()
@@ -91,11 +94,11 @@ func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *
 			done <- struct{}{}
 		}()
 
-		ticker.Reset(cfg.ScanMaxRTT + 100*time.Millisecond)
+		timer.Reset(cfg.ScanMaxRTT + 100*time.Millisecond)
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-timer.C:
 			log.Println(ip, "timeout")
 		case <-done:
 		}

@@ -29,7 +29,7 @@ func testSni(ip string, config *ScanConfig, record *ScanRecord) bool {
 		}
 		if config.Level > 1 {
 			pcs := tlsconn.ConnectionState().PeerCertificates
-			if pcs == nil || len(pcs) == 0 || pcs[0].Subject.CommonName != serverName {
+			if len(pcs) == 0 || pcs[0].Subject.CommonName != serverName {
 				tlsconn.Close()
 				return false
 			}

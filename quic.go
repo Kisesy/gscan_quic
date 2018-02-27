@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	quic "github.com/phuslu/quic-go"
-	"github.com/phuslu/quic-go/h2quic"
+	quic "github.com/lucas-clemente/quic-go"
+	"github.com/lucas-clemente/quic-go/h2quic"
 )
 
 var errNoSuchBucket = []byte("<?xml version='1.0' encoding='UTF-8'?><Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message></Error>")
@@ -54,7 +54,7 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 
 	// lv1 只会验证证书是否存在
 	cs := quicSessn.ConnectionState()
-	if cs == nil {
+	if !cs.HandshakeComplete {
 		return false
 	}
 	pcs := cs.PeerCertificates
@@ -75,17 +75,16 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 		tr := &h2quic.RoundTripper{DisableCompression: true}
 		defer tr.Close()
 
-		tr.DialAddr = func(hostname string, tlsConfig *tls.Config, config *quic.Config) (quic.Session, error) {
+		tr.Dial = func(network, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.Session, error) {
 			return quicSessn, err
 		}
 		// 设置超时
-		udpConn.SetReadDeadline(time.Now().Add(config.ScanMaxRTT - time.Since(start)))
 		hclient := &http.Client{
 			Transport: tr,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
-			// Timeout: config.ScanMaxRTT - time.Since(start),
+			Timeout: config.ScanMaxRTT - time.Since(start),
 		}
 		url := "https://" + config.HTTPVerifyHosts[rand.Intn(len(config.HTTPVerifyHosts))]
 		req, _ := http.NewRequest(http.MethodGet, url, nil)
