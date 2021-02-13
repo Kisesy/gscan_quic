@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	quic "github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/h2quic"
+	quic "github.com/ipsn/go-ipfs/gxlibs/github.com/lucas-clemente/quic-go"
+	"github.com/ipsn/go-ipfs/gxlibs/github.com/lucas-clemente/quic-go/h2quic"
 )
 
 var errNoSuchBucket = []byte("<?xml version='1.0' encoding='UTF-8'?><Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message></Error>")
@@ -50,7 +50,7 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 	if err != nil {
 		return false
 	}
-	defer quicSessn.Close(nil)
+	defer quicSessn.Close()
 
 	// lv1 只会验证证书是否存在
 	cs := quicSessn.ConnectionState()
