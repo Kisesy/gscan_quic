@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"io"
 	"io/ioutil"
@@ -11,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	quic "github.com/ipsn/go-ipfs/gxlibs/github.com/lucas-clemente/quic-go"
-	"github.com/ipsn/go-ipfs/gxlibs/github.com/lucas-clemente/quic-go/h2quic"
+	quic "github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 var errNoSuchBucket = []byte("<?xml version='1.0' encoding='UTF-8'?><Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message></Error>")
@@ -28,8 +29,8 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 	defer udpConn.Close()
 
 	quicCfg := &quic.Config{
-		HandshakeTimeout: config.HandshakeTimeout,
-		KeepAlive:        false,
+		HandshakeIdleTimeout: config.HandshakeTimeout,
+		KeepAlivePeriod:      0,
 	}
 
 	var serverName string
@@ -44,16 +45,16 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 		ServerName:         serverName,
 	}
 
+	ctx := context.TODO()
 	udpAddr := &net.UDPAddr{IP: net.ParseIP(ip), Port: 443}
-	addr := net.JoinHostPort(serverName, "443")
-	quicSessn, err := quic.Dial(udpConn, udpAddr, addr, tlsCfg, quicCfg)
+	quicSessn, err := quic.DialEarly(ctx, udpConn, udpAddr, tlsCfg, quicCfg)
 	if err != nil {
 		return false
 	}
-	defer quicSessn.Close()
+	defer quicSessn.CloseWithError(0, "")
 
 	// lv1 只会验证证书是否存在
-	cs := quicSessn.ConnectionState()
+	cs := quicSessn.ConnectionState().TLS
 	if !cs.HandshakeComplete {
 		return false
 	}
@@ -72,10 +73,9 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 
 	// lv3 使用 http 访问来验证
 	if config.Level > 2 {
-		tr := &h2quic.RoundTripper{DisableCompression: true}
+		tr := &http3.RoundTripper{DisableCompression: true}
 		defer tr.Close()
-
-		tr.Dial = func(network, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.Session, error) {
+		tr.Dial = func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
 			return quicSessn, err
 		}
 		// 设置超时
