@@ -43,6 +43,7 @@ func testQuic(ip string, config *ScanConfig, record *ScanRecord) bool {
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
 		ServerName:         serverName,
+		NextProtos:         []string{"h3-29", "h3", "hq", "quic"},
 	}
 
 	ctx := context.TODO()
