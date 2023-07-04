@@ -1,11 +1,7 @@
 archives:
-  files:
-    - LICENSE.txt
-    - README_{{.Os}}.md
-    - CHANGELOG.md
-    - docs/*
-    - design/*.png
-    - templates/**/*
-    - config.json
-    - config.user.json.example
-    - iprange_quic.txt.example
+  - format: zip
+  - files:
+      - LICENSE
+      - README.md
+      - config.json
+      - "*.example"
