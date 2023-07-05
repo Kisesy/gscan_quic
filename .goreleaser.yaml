@@ -1,6 +1,9 @@
 archives:
-  - format: zip
-  - files:
+  - id: "gscan_quic"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
       - LICENSE
       - README.md
       - config.json
