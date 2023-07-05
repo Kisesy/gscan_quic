@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,8 +45,6 @@ type GScanConfig struct {
 }
 
 func init() {
-	rand.Seed(time.Now().Unix())
-
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
@@ -67,7 +63,7 @@ func initConfig(cfgfile, execFolder string) *GScanConfig {
 			gcfg.BackupDir = filepath.Join(execFolder, gcfg.BackupDir)
 		}
 		if _, err := os.Stat(gcfg.BackupDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(gcfg.BackupDir, 0755); err != nil {
+			if err := os.MkdirAll(gcfg.BackupDir, 0o755); err != nil {
 				log.Println(err)
 			}
 		}
@@ -78,8 +74,8 @@ func initConfig(cfgfile, execFolder string) *GScanConfig {
 		gcfg.VerifyPing = false
 	}
 
-	gcfg.ScanMinPingRTT = gcfg.ScanMinPingRTT * time.Millisecond
-	gcfg.ScanMaxPingRTT = gcfg.ScanMaxPingRTT * time.Millisecond
+	gcfg.ScanMinPingRTT *= time.Millisecond
+	gcfg.ScanMaxPingRTT *= time.Millisecond
 
 	cfgs := []*ScanConfig{&gcfg.Quic, &gcfg.Tls, &gcfg.Sni, &gcfg.Ping}
 	for _, c := range cfgs {
@@ -94,7 +90,7 @@ func initConfig(cfgfile, execFolder string) *GScanConfig {
 			c.OutputFile, _ = filepath.Abs(c.OutputFile)
 		}
 		if _, err := os.Stat(c.InputFile); os.IsNotExist(err) {
-			os.OpenFile(c.InputFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0644)
+			os.Create(c.InputFile)
 		}
 
 		c.ScanMinRTT *= time.Millisecond
@@ -129,7 +125,7 @@ func main() {
 	flag.StringVar(&cfgfile, "Config File", "./config.json", "Config file, json format")
 	flag.Parse()
 
-	var execFolder = "./"
+	execFolder := "./"
 	if e, err := os.Executable(); err != nil {
 		log.Panicln(err)
 	} else {
@@ -165,8 +161,6 @@ func main() {
 		log.Panicln(err)
 	}
 
-	srs := &ScanRecords{}
-
 	log.Printf("Start loading IP Range file: %s\n", iprangeFile)
 	ipqueue, err := parseIPRangeFile(iprangeFile)
 	if err != nil {
@@ -175,39 +169,42 @@ func main() {
 
 	log.Printf("Start scanning available IP\n")
 	startTime := time.Now()
-	StartScan(srs, gcfg, cfg, ipqueue)
+	srs := StartScan(gcfg, cfg, ipqueue)
 	log.Printf("Scanned %d IP in %s, found %d records\n", srs.ScanCount(), time.Since(startTime).String(), len(srs.records))
 
-	if records := srs.records; len(records) > 0 {
-		sort.Slice(records, func(i, j int) bool {
-			return records[i].RTT < records[j].RTT
-		})
-		a := make([]string, len(records))
-		for i, r := range records {
-			a[i] = r.IP
-		}
-		b := new(bytes.Buffer)
-		if cfg.OutputSeparator == "gop" {
-			out := strings.Join(a, `", "`)
-			b.WriteString(`"` + out + `",`)
-		} else {
-			out := strings.Join(a, cfg.OutputSeparator)
-			b.WriteString(out)
-		}
+	records := srs.records
+	if len(records) == 0 {
+		return
+	}
 
-		if err := ioutil.WriteFile(cfg.OutputFile, b.Bytes(), 0644); err != nil {
-			log.Printf("Failed to write output file:%s for reason:%v\n", cfg.OutputFile, err)
+	sort.Slice(records, func(i, j int) bool {
+		return records[i].RTT < records[j].RTT
+	})
+	a := make([]string, len(records))
+	for i, r := range records {
+		a[i] = r.IP
+	}
+	b := new(bytes.Buffer)
+	if cfg.OutputSeparator == "gop" {
+		out := strings.Join(a, `", "`)
+		b.WriteString(`"` + out + `",`)
+	} else {
+		out := strings.Join(a, cfg.OutputSeparator)
+		b.WriteString(out)
+	}
+
+	if err := os.WriteFile(cfg.OutputFile, b.Bytes(), 0o644); err != nil {
+		log.Printf("Failed to write output file:%s for reason:%v\n", cfg.OutputFile, err)
+	} else {
+		log.Printf("All results writed to %s\n", cfg.OutputFile)
+	}
+	if gcfg.EnableBackup {
+		filename := fmt.Sprintf("%s_%s_lv%d.txt", scanMode, time.Now().Format(time.DateTime), cfg.Level)
+		bakfilename := filepath.Join(gcfg.BackupDir, filename)
+		if err := os.WriteFile(bakfilename, b.Bytes(), 0o644); err != nil {
+			log.Printf("Failed to write output file:%s for reason:%v\n", bakfilename, err)
 		} else {
-			log.Printf("All results writed to %s\n", cfg.OutputFile)
-		}
-		if gcfg.EnableBackup {
-			filename := fmt.Sprintf("%s_%s_lv%d.txt", scanMode, time.Now().Format("20060102_150405"), cfg.Level)
-			bakfilename := filepath.Join(gcfg.BackupDir, filename)
-			if err := ioutil.WriteFile(bakfilename, b.Bytes(), 0644); err != nil {
-				log.Printf("Failed to write output file:%s for reason:%v\n", bakfilename, err)
-			} else {
-				log.Printf("All results writed to %s\n", bakfilename)
-			}
+			log.Printf("All results writed to %s\n", bakfilename)
 		}
 	}
 }

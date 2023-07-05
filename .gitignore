@@ -18,3 +18,4 @@ out*.txt
 .glide/
 gscan_quic/
 backup/
+bin/

@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/mikioh/ipaddr"
 )
@@ -107,7 +106,7 @@ func parseIPRangeFile(file string) (chan string, error) {
 	scanner := bufio.NewScanner(f)
 	// 一行最大 4MB
 	buf := make([]byte, 1024*1024*4)
-	scanner.Buffer(buf, 1024*1024*4)
+	scanner.Buffer(buf, len(buf))
 
 	for scanner.Scan() {
 		line := strings.TrimFunc(scanner.Text(), func(r rune) bool {
@@ -133,42 +132,18 @@ func parseIPRangeFile(file string) (chan string, error) {
 		}
 	}
 
-	/*	IP段去重	(此描述对当前算法不适用-2017/09/21)
-
-		"1.9.22.0-255"
-		"1.9.0.0/16"
-		"1.9.22.0-255"
-		"1.9.22.0/24"
-		"1.9.22.0-255"
-		"1.9.22.0-1.9.22.100"
-		"1.9.22.0-1.9.22.255"
-		"1.9.0.0/16"
-		"3.3.3.0/24"
-		"3.3.0.0/16"
-		"3.3.3.0-255"
-		"1.1.1.0/24"
-		"1.9.0.0/16"
-		"2001:db8::1/128"
-			  |
-			  |
-			  v
-		[1.9.0.0/16 3.3.0.0/16 1.1.1.0/24 203.0.113.0/24 2001:db8::1/128]
-	*/
-
 	out := make(chan string, 200)
 	go func() {
 		defer close(out)
 		if len(ipranges) > 0 {
-			sort.Slice(ipranges, func(i int, j int) bool {
-				return strings.Compare(ipranges[i].String(), ipranges[j].String()) == -1
-			})
 			ipranges = dedup(ipranges)
 
 			// 打乱IP段扫描顺序
-			rand.Seed(time.Now().Unix())
-			perm := rand.Perm(len(ipranges))
-			for _, v := range perm {
-				c := ipaddr.NewCursor([]ipaddr.Prefix{ipranges[v]})
+			rand.Shuffle(len(ipranges), func(i, j int) {
+				ipranges[i], ipranges[j] = ipranges[j], ipranges[i]
+			})
+			for i := range ipranges {
+				c := ipaddr.NewCursor([]ipaddr.Prefix{ipranges[i]})
 				for ip := c.First(); ip != nil; ip = c.Next() {
 					out <- ip.IP.String()
 				}
@@ -179,7 +154,34 @@ func parseIPRangeFile(file string) (chan string, error) {
 	return out, nil
 }
 
+/*
+IP段去重	(此描述对当前算法不适用-2017/09/21)
+
+"1.9.22.0-255"
+"1.9.0.0/16"
+"1.9.22.0-255"
+"1.9.22.0/24"
+"1.9.22.0-255"
+"1.9.22.0-1.9.22.100"
+"1.9.22.0-1.9.22.255"
+"1.9.0.0/16"
+"3.3.3.0/24"
+"3.3.0.0/16"
+"3.3.3.0-255"
+"1.1.1.0/24"
+"1.9.0.0/16"
+"2001:db8::1/128"
+
+	|
+	|
+	v
+
+[1.9.0.0/16 3.3.0.0/16 1.1.1.0/24 203.0.113.0/24 2001:db8::1/128]
+*/
 func dedup(s []ipaddr.Prefix) []ipaddr.Prefix {
+	sort.Slice(s, func(i int, j int) bool {
+		return s[i].String() < s[j].String()
+	})
 	out := s[:1]
 	t := s[0]
 	for _, s := range s[1:] {

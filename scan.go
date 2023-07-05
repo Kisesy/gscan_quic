@@ -105,8 +105,10 @@ func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *
 	}
 }
 
-func StartScan(srs *ScanRecords, gcfg *GScanConfig, cfg *ScanConfig, ipqueue chan string) {
+func StartScan(gcfg *GScanConfig, cfg *ScanConfig, ipqueue chan string) *ScanRecords {
 	var wg sync.WaitGroup
+	var srs ScanRecords
+
 	wg.Add(gcfg.ScanWorker)
 
 	interrupt := make(chan os.Signal, 1)
@@ -122,14 +124,14 @@ func StartScan(srs *ScanRecords, gcfg *GScanConfig, cfg *ScanConfig, ipqueue cha
 
 	ch := make(chan string, 100)
 	for i := 0; i < gcfg.ScanWorker; i++ {
-		go testip_worker(ctx, ch, gcfg, cfg, srs, &wg)
+		go testip_worker(ctx, ch, gcfg, cfg, &srs, &wg)
 	}
 
 	for ip := range ipqueue {
 		select {
 		case ch <- ip:
 		case <-ctx.Done():
-			return
+			return &srs
 		}
 		if srs.RecordSize() >= cfg.RecordLimit {
 			break
@@ -138,4 +140,5 @@ func StartScan(srs *ScanRecords, gcfg *GScanConfig, cfg *ScanConfig, ipqueue cha
 
 	close(ch)
 	wg.Wait()
+	return &srs
 }
