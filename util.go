@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path"
 	"strings"
 )
 
-// Gop
+// 代码来自: goproxy
 func readJsonConfig(filename string, config interface{}) error {
 	fileext := path.Ext(filename)
 	filename1 := strings.TrimSuffix(filename, fileext) + ".user" + fileext
@@ -62,13 +61,13 @@ func readJsonConfig(filename string, config interface{}) error {
 }
 
 func readJson(r io.Reader) ([]byte, error) {
-	s, err := ioutil.ReadAll(r)
+	s, err := io.ReadAll(r)
 	if err != nil {
 		return s, err
 	}
 
 	lines := make([]string, 0)
-	for _, line := range strings.Split(strings.Replace(string(s), "\r\n", "\n", -1), "\n") {
+	for _, line := range strings.Split(strings.ReplaceAll(string(s), "\r\n", "\n"), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "//") {
 			continue
@@ -80,13 +79,8 @@ func readJson(r io.Reader) ([]byte, error) {
 	for i, line := range lines {
 		if i < len(lines)-1 {
 			nextLine := strings.TrimSpace(lines[i+1])
-			if nextLine == "]" ||
-				nextLine == "]," ||
-				nextLine == "}" ||
-				nextLine == "}," {
-				if strings.HasSuffix(line, ",") {
-					line = strings.TrimSuffix(line, ",")
-				}
+			if nextLine == "]" || nextLine == "]," || nextLine == "}" || nextLine == "}," {
+				line = strings.TrimSuffix(line, ",")
 			}
 		}
 		b.WriteString(line)
@@ -119,6 +113,11 @@ func randInt(l, u int) int {
 	return rand.Intn(u-l) + l
 }
 
+func randomChoice[T any](a []T) T {
+	return a[rand.Intn(len(a))]
+}
+
+// 生成两段或三段的随机字符串当作 host
 // llm.xadl
 // unupk.bfrf.pvi
 func randomHost() string {

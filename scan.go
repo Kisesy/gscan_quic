@@ -16,7 +16,7 @@ type ScanRecord struct {
 }
 
 type ScanRecords struct {
-	recordMutex sync.RWMutex
+	recordMutex sync.Mutex
 	records     []*ScanRecord
 	scanCounter int32
 }
@@ -36,8 +36,8 @@ func (srs *ScanRecords) IncScanCounter() {
 }
 
 func (srs *ScanRecords) RecordSize() int {
-	srs.recordMutex.RLock()
-	defer srs.recordMutex.RUnlock()
+	srs.recordMutex.Lock()
+	defer srs.recordMutex.Unlock()
 	return len(srs.records)
 }
 
@@ -45,12 +45,12 @@ func (srs *ScanRecords) ScanCount() int32 {
 	return atomic.LoadInt32(&srs.scanCounter)
 }
 
-var testIPFunc func(ip string, config *ScanConfig, record *ScanRecord) bool
+var testIPFunc func(ctx context.Context, ip string, config *ScanConfig, record *ScanRecord) bool
 
-func testip(ip string, config *ScanConfig) *ScanRecord {
+func testip(ctx context.Context, ip string, config *ScanConfig) *ScanRecord {
 	record := new(ScanRecord)
 	for i := 0; i < config.ScanCountPerIP; i++ {
-		if !testIPFunc(ip, config, record) {
+		if !testIPFunc(ctx, ip, config, record) {
 			return nil
 		}
 	}
@@ -59,86 +59,49 @@ func testip(ip string, config *ScanConfig) *ScanRecord {
 	return record
 }
 
-func testip_worker(ctx context.Context, ch chan string, gcfg *GScanConfig, cfg *ScanConfig, srs *ScanRecords, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	timer := time.NewTimer(cfg.ScanMaxRTT + 100*time.Millisecond)
-	defer timer.Stop()
-
-	ctx, cancal := context.WithCancel(ctx)
-	defer cancal()
-
-	for ip := range ch {
+func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, cfg *ScanConfig, srs *ScanRecords) {
+	for ip := range ipQueue {
 		srs.IncScanCounter()
 
 		if gcfg.VerifyPing {
 			start := time.Now()
-			if err := Ping(ip, gcfg.ScanMaxPingRTT); err != nil {
-				continue
-			}
-			if time.Since(start) < gcfg.ScanMinPingRTT {
+
+			pingErr := Ping(ip, gcfg.ScanMaxPingRTT)
+			if pingErr != nil || time.Since(start) < gcfg.ScanMinPingRTT {
 				continue
 			}
 		}
 
-		done := make(chan struct{}, 1)
-		go func() {
-			r := testip(ip, cfg)
-			if r != nil {
-				if srs.RecordSize() >= cfg.RecordLimit {
-					close(done)
-					return
-				}
-				srs.AddRecord(r)
-			}
-			done <- struct{}{}
-		}()
-
-		timer.Reset(cfg.ScanMaxRTT + 100*time.Millisecond)
 		select {
 		case <-ctx.Done():
 			return
-		case <-timer.C:
-			log.Println(ip, "timeout")
-		case <-done:
+		default:
+			r := testip(ctx, ip, cfg)
+			if r != nil {
+				srs.AddRecord(r) // 这里放到前面，扫描时可能会多出一些记录, 但是不影响
+				if srs.RecordSize() >= cfg.RecordLimit {
+					return
+				}
+			}
 		}
+
 	}
 }
 
-func StartScan(gcfg *GScanConfig, cfg *ScanConfig, ipqueue chan string) *ScanRecords {
+func StartScan(gcfg *GScanConfig, cfg *ScanConfig, ipQueue chan string) *ScanRecords {
 	var wg sync.WaitGroup
 	var srs ScanRecords
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	wg.Add(gcfg.ScanWorker)
-
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		<-interrupt
-		cancel()
-	}()
-
-	ch := make(chan string, 100)
 	for i := 0; i < gcfg.ScanWorker; i++ {
-		go testip_worker(ctx, ch, gcfg, cfg, &srs, &wg)
+		go func() {
+			defer wg.Done()
+			testIPWorker(ctx, ipQueue, gcfg, cfg, &srs)
+		}()
 	}
-
-	for ip := range ipqueue {
-		select {
-		case ch <- ip:
-		case <-ctx.Done():
-			return &srs
-		}
-		if srs.RecordSize() >= cfg.RecordLimit {
-			break
-		}
-	}
-
-	close(ch)
 	wg.Wait()
 	return &srs
 }

@@ -8,13 +8,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net"
 	"os"
 	"time"
 )
 
-func testPing(ip string, config *ScanConfig, record *ScanRecord) bool {
+func testPing(ctx context.Context, ip string, config *ScanConfig, record *ScanRecord) bool {
 	start := time.Now()
 	if err := Pinger(ip, config.ScanMaxRTT); err != nil {
 		return false

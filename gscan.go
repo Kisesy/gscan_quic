@@ -48,56 +48,56 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
-func initConfig(cfgfile, execFolder string) *GScanConfig {
-	if strings.HasPrefix(cfgfile, "./") {
-		cfgfile = filepath.Join(execFolder, cfgfile)
+func initConfig(cfgFile, execFolder string) *GScanConfig {
+	if strings.HasPrefix(cfgFile, "./") {
+		cfgFile = filepath.Join(execFolder, cfgFile)
 	}
 
-	gcfg := new(GScanConfig)
-	if err := readJsonConfig(cfgfile, gcfg); err != nil {
+	config := new(GScanConfig)
+	if err := readJsonConfig(cfgFile, config); err != nil {
 		log.Panicln(err)
 	}
 
-	if gcfg.EnableBackup {
-		if strings.HasPrefix(gcfg.BackupDir, "./") {
-			gcfg.BackupDir = filepath.Join(execFolder, gcfg.BackupDir)
+	if config.EnableBackup {
+		if strings.HasPrefix(config.BackupDir, "./") {
+			config.BackupDir = filepath.Join(execFolder, config.BackupDir)
 		}
-		if _, err := os.Stat(gcfg.BackupDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(gcfg.BackupDir, 0o755); err != nil {
+		if _, err := os.Stat(config.BackupDir); os.IsNotExist(err) {
+			if err := os.MkdirAll(config.BackupDir, 0o755); err != nil {
 				log.Println(err)
 			}
 		}
 	}
 
-	gcfg.ScanMode = strings.ToLower(gcfg.ScanMode)
-	if gcfg.ScanMode == "ping" {
-		gcfg.VerifyPing = false
+	config.ScanMode = strings.ToLower(config.ScanMode)
+	if config.ScanMode == "ping" {
+		config.VerifyPing = false
 	}
 
-	gcfg.ScanMinPingRTT *= time.Millisecond
-	gcfg.ScanMaxPingRTT *= time.Millisecond
+	config.ScanMinPingRTT *= time.Millisecond
+	config.ScanMaxPingRTT *= time.Millisecond
 
-	cfgs := []*ScanConfig{&gcfg.Quic, &gcfg.Tls, &gcfg.Sni, &gcfg.Ping}
-	for _, c := range cfgs {
-		if strings.HasPrefix(c.InputFile, "./") {
-			c.InputFile = filepath.Join(execFolder, c.InputFile)
+	scanConfigs := []*ScanConfig{&config.Quic, &config.Tls, &config.Sni, &config.Ping}
+	for _, scanConfig := range scanConfigs {
+		if strings.HasPrefix(scanConfig.InputFile, "./") {
+			scanConfig.InputFile = filepath.Join(execFolder, scanConfig.InputFile)
 		} else {
-			c.InputFile, _ = filepath.Abs(c.InputFile)
+			scanConfig.InputFile, _ = filepath.Abs(scanConfig.InputFile)
 		}
-		if strings.HasPrefix(c.OutputFile, "./") {
-			c.OutputFile = filepath.Join(execFolder, c.OutputFile)
+		if strings.HasPrefix(scanConfig.OutputFile, "./") {
+			scanConfig.OutputFile = filepath.Join(execFolder, scanConfig.OutputFile)
 		} else {
-			c.OutputFile, _ = filepath.Abs(c.OutputFile)
+			scanConfig.OutputFile, _ = filepath.Abs(scanConfig.OutputFile)
 		}
-		if _, err := os.Stat(c.InputFile); os.IsNotExist(err) {
-			os.Create(c.InputFile)
+		if _, err := os.Stat(scanConfig.InputFile); os.IsNotExist(err) {
+			os.Create(scanConfig.InputFile)
 		}
 
-		c.ScanMinRTT *= time.Millisecond
-		c.ScanMaxRTT *= time.Millisecond
-		c.HandshakeTimeout *= time.Millisecond
+		scanConfig.ScanMinRTT *= time.Millisecond
+		scanConfig.ScanMaxRTT *= time.Millisecond
+		scanConfig.HandshakeTimeout *= time.Millisecond
 	}
-	return gcfg
+	return config
 }
 
 func main() {
@@ -196,15 +196,15 @@ func main() {
 	if err := os.WriteFile(cfg.OutputFile, b.Bytes(), 0o644); err != nil {
 		log.Printf("Failed to write output file:%s for reason:%v\n", cfg.OutputFile, err)
 	} else {
-		log.Printf("All results writed to %s\n", cfg.OutputFile)
+		log.Printf("All results written to %s\n", cfg.OutputFile)
 	}
 	if gcfg.EnableBackup {
-		filename := fmt.Sprintf("%s_%s_lv%d.txt", scanMode, time.Now().Format(time.DateTime), cfg.Level)
+		filename := fmt.Sprintf("%s_%s_lv%d.txt", scanMode, time.Now().Format("20060102_150405"), cfg.Level)
 		bakfilename := filepath.Join(gcfg.BackupDir, filename)
 		if err := os.WriteFile(bakfilename, b.Bytes(), 0o644); err != nil {
 			log.Printf("Failed to write output file:%s for reason:%v\n", bakfilename, err)
 		} else {
-			log.Printf("All results writed to %s\n", bakfilename)
+			log.Printf("All results written to %s\n", bakfilename)
 		}
 	}
 }
