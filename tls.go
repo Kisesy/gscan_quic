@@ -58,7 +58,7 @@ func testTls(ctx context.Context, ip string, config *ScanConfig, record *ScanRec
 		if pcs == nil || len(pcs) < 2 {
 			return false
 		}
-		if org := pcs[0].Subject.Organization; len(org) == 0 || org[0] != "Google Trust Services LLC" {
+		if org := pcs[1].Subject.Organization; len(org) == 0 || org[0] != "Google Trust Services LLC" {
 			return false
 		}
 		pkp := pcs[1].RawSubjectPublicKeyInfo
