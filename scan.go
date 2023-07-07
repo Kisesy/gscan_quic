@@ -63,6 +63,8 @@ func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, s
 	cfg, testFunc := gcfg.getScanConfig(gcfg.ScanMode)
 
 	for ip := range ipQueue {
+		// log.Printf("Start testing IP: %s", ip)
+
 		srs.IncScanCounter()
 
 		if gcfg.VerifyPing {

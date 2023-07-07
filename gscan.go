@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,6 +46,8 @@ type GScanConfig struct {
 }
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 

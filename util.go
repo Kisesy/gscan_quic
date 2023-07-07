@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 )
 
 // 代码来自: goproxy
@@ -136,4 +137,22 @@ func or[T comparable](vals ...T) T {
 func pathExist(name string) bool {
 	_, err := os.Stat(name)
 	return !os.IsNotExist(err)
+}
+
+func ops(count, threads int, op func(i, thread int)) {
+	var wg sync.WaitGroup
+	wg.Add(threads)
+	for i := 0; i < threads; i++ {
+		s, e := count/threads*i, count/threads*(i+1)
+		if i == threads-1 {
+			e = count
+		}
+		go func(i, s, e int) {
+			for j := s; j < e; j++ {
+				op(j, i)
+			}
+			wg.Done()
+		}(i, s, e)
+	}
+	wg.Wait()
 }

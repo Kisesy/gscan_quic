@@ -142,13 +142,19 @@ func parseIPRangeFile(file string) (chan string, error) {
 			rand.Shuffle(len(ipranges), func(i, j int) {
 				ipranges[i], ipranges[j] = ipranges[j], ipranges[i]
 			})
-			for i := range ipranges {
+
+			// 打乱IP的扫描顺序, 不再等待一个IP段扫描完毕再进行下一个, 提高扫描的随机性
+			// 有时候可以更快的扫到IP
+			n := 15
+			if len(ipranges) < n {
+				n = len(ipranges)
+			}
+			ops(len(ipranges), n, func(i, _ int) {
 				c := ipaddr.NewCursor([]ipaddr.Prefix{ipranges[i]})
 				for ip := c.First(); ip != nil; ip = c.Next() {
 					out <- ip.IP.String()
 				}
-			}
-
+			})
 		}
 	}()
 	return out, nil
