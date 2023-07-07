@@ -45,6 +45,12 @@ func (srs *ScanRecords) ScanCount() int32 {
 	return atomic.LoadInt32(&srs.scanCounter)
 }
 
+func (srs *ScanRecords) Records() []*ScanRecord {
+	srs.recordMutex.Lock()
+	defer srs.recordMutex.Unlock()
+	return srs.records
+}
+
 type testIPFunc func(ctx context.Context, ip string, config *ScanConfig, record *ScanRecord) bool
 
 func testip(ctx context.Context, testFunc testIPFunc, ip string, config *ScanConfig) *ScanRecord {
@@ -59,19 +65,17 @@ func testip(ctx context.Context, testFunc testIPFunc, ip string, config *ScanCon
 	return record
 }
 
-func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, srs *ScanRecords) {
-	cfg, testFunc := gcfg.getScanConfig(gcfg.ScanMode)
+func (gs *GScanner) testIPWorker(ctx context.Context, ipQueue chan string) {
+	cfg, testFunc := gs.getScanConfig(gs.ScanMode)
 
 	for ip := range ipQueue {
 		// log.Printf("Start testing IP: %s", ip)
 
-		srs.IncScanCounter()
-
-		if gcfg.VerifyPing {
+		if gs.VerifyPing {
 			start := time.Now()
 
-			pingErr := Ping(ip, gcfg.ScanMaxPingRTT)
-			if pingErr != nil || time.Since(start) < gcfg.ScanMinPingRTT {
+			pingErr := Ping(ip, gs.ScanMaxPingRTT)
+			if pingErr != nil || time.Since(start) < gs.ScanMinPingRTT {
 				continue
 			}
 		}
@@ -82,30 +86,23 @@ func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, s
 		default:
 			r := testip(ctx, testFunc, ip, cfg)
 			if r != nil {
-				srs.AddRecord(r) // 这里放到前面，扫描时可能会多出一些记录, 但是不影响
-				if srs.RecordSize() >= cfg.RecordLimit {
+				gs.AddRecord(r) // 这里放到前面，扫描时可能会多出一些记录, 但是不影响
+				if gs.RecordSize() >= cfg.RecordLimit {
 					return
 				}
 			}
+			gs.IncScanCounter() // 扫描完后才增加计数
 		}
 
 	}
 }
 
-func StartScan(gcfg *GScanConfig, ipQueue chan string) *ScanRecords {
-	var wg sync.WaitGroup
-	var srs ScanRecords
-
+func (gs *GScanner) StartScan(ipQueue chan string) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	wg.Add(gcfg.ScanWorker)
-	for i := 0; i < gcfg.ScanWorker; i++ {
-		go func() {
-			defer wg.Done()
-			testIPWorker(ctx, ipQueue, gcfg, &srs)
-		}()
-	}
-	wg.Wait()
-	return &srs
+	n := gs.ScanWorker
+	ops(n, n, func(i, thread int) {
+		gs.testIPWorker(ctx, ipQueue)
+	})
 }
