@@ -62,10 +62,9 @@ func initConfig(cfgFile, execFolder string) *GScanConfig {
 		if strings.HasPrefix(config.BackupDir, "./") {
 			config.BackupDir = filepath.Join(execFolder, config.BackupDir)
 		}
-		if _, err := os.Stat(config.BackupDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(config.BackupDir, 0o755); err != nil {
-				log.Println(err)
-			}
+		err := os.MkdirAll(config.BackupDir, 0o644)
+		if err != nil {
+			log.Printf("could not create backup dir:%v", err)
 		}
 	}
 
@@ -89,7 +88,7 @@ func initConfig(cfgFile, execFolder string) *GScanConfig {
 		} else {
 			scanConfig.OutputFile, _ = filepath.Abs(scanConfig.OutputFile)
 		}
-		if _, err := os.Stat(scanConfig.InputFile); os.IsNotExist(err) {
+		if !pathExist(scanConfig.InputFile) {
 			os.Create(scanConfig.InputFile)
 		}
 
@@ -107,17 +106,18 @@ func main() {
 			fmt.Println("panic:", r)
 		}
 		fmt.Println()
-		if !disablePause {
-			if runtime.GOOS == "windows" {
-				cmd := exec.Command("cmd", "/C", "pause")
-				cmd.Stdout = os.Stdout
-				cmd.Stdin = os.Stdin
-				// 改为 start, 程序可以正常退出, 这样一些程序监视工具可以正常测到程序结束了
-				cmd.Start()
-			} else {
-				fmt.Println("Press [Enter] to exit...")
-				fmt.Scanln()
-			}
+		if disablePause {
+			return
+		}
+		if runtime.GOOS == "windows" {
+			cmd := exec.Command("cmd", "/C", "pause")
+			cmd.Stdout = os.Stdout
+			cmd.Stdin = os.Stdin
+			// 改为 start, 程序可以正常退出, 这样一些程序监视工具可以正常测到程序结束了
+			cmd.Start()
+		} else {
+			fmt.Println("Press [Enter] to exit...")
+			fmt.Scanln()
 		}
 	}()
 
@@ -125,52 +125,33 @@ func main() {
 	flag.StringVar(&cfgfile, "Config File", "./config.json", "Config file, json format")
 	flag.Parse()
 
-	execFolder := "./"
-	if e, err := os.Executable(); err != nil {
+	exe, err := os.Executable()
+	if err != nil {
 		log.Panicln(err)
-	} else {
-		execFolder = filepath.Dir(e)
 	}
-	// execFolder = "./"
+	execFolder := filepath.Dir(exe)
 
 	gcfg := initConfig(cfgfile, execFolder)
 	disablePause = gcfg.DisablePause
 
-	var cfg *ScanConfig
 	scanMode := gcfg.ScanMode
-	switch scanMode {
-	case "quic":
-		cfg = &gcfg.Quic
-		testIPFunc = testQuic
-	case "tls":
-		cfg = &gcfg.Tls
-		testIPFunc = testTls
-	case "sni":
-		cfg = &gcfg.Sni
-		testIPFunc = testSni
-	case "ping":
-		cfg = &gcfg.Ping
-		testIPFunc = testPing
-	case "socks5":
-		// testIPFunc = testSocks5
-	default:
-	}
+	cfg, _ := gcfg.getScanConfig(scanMode)
 
 	iprangeFile := cfg.InputFile
-	if _, err := os.Stat(iprangeFile); os.IsNotExist(err) {
-		log.Panicln(err)
+	if !pathExist(iprangeFile) {
+		log.Panicf("IP Range file not exist: %s", iprangeFile)
 	}
 
-	log.Printf("Start loading IP Range file: %s\n", iprangeFile)
+	log.Printf("Start loading IP Range file: %s", iprangeFile)
 	ipqueue, err := parseIPRangeFile(iprangeFile)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	log.Printf("Start scanning available IP\n")
+	log.Printf("Start scanning available IP")
 	startTime := time.Now()
-	srs := StartScan(gcfg, cfg, ipqueue)
-	log.Printf("Scanned %d IP in %s, found %d records\n", srs.ScanCount(), time.Since(startTime).String(), len(srs.records))
+	srs := StartScan(gcfg, ipqueue)
+	log.Printf("Scanned %d IP in %s, found %d records", srs.ScanCount(), time.Since(startTime).String(), len(srs.records))
 
 	records := srs.records
 	if len(records) == 0 {
@@ -187,19 +168,23 @@ func main() {
 	b := new(bytes.Buffer)
 	if cfg.OutputSeparator == "gop" {
 		out := strings.Join(a, `", "`)
-		b.WriteString(`"` + out + `",`)
+		b.WriteString(`"`)
+		b.WriteString(out)
+		b.WriteString(`",`)
 	} else {
 		out := strings.Join(a, cfg.OutputSeparator)
 		b.WriteString(out)
 	}
 
 	if err := os.WriteFile(cfg.OutputFile, b.Bytes(), 0o644); err != nil {
-		log.Printf("Failed to write output file:%s for reason:%v\n", cfg.OutputFile, err)
+		log.Printf("Failed to write output file:%s for reason:%v", cfg.OutputFile, err)
 	} else {
-		log.Printf("All results written to %s\n", cfg.OutputFile)
+		log.Printf("All results written to %s", cfg.OutputFile)
 	}
+
 	if gcfg.EnableBackup {
 		filename := fmt.Sprintf("%s_%s_lv%d.txt", scanMode, time.Now().Format("20060102_150405"), cfg.Level)
+
 		bakfilename := filepath.Join(gcfg.BackupDir, filename)
 		if err := os.WriteFile(bakfilename, b.Bytes(), 0o644); err != nil {
 			log.Printf("Failed to write output file:%s for reason:%v\n", bakfilename, err)
@@ -207,4 +192,22 @@ func main() {
 			log.Printf("All results written to %s\n", bakfilename)
 		}
 	}
+}
+
+func (gcfg *GScanConfig) getScanConfig(scanMode string) (*ScanConfig, testIPFunc) {
+	switch scanMode {
+	case "quic":
+		return &gcfg.Quic, testQuic
+	case "tls":
+		return &gcfg.Tls, testTls
+	case "sni":
+		return &gcfg.Sni, testSni
+	case "ping":
+		return &gcfg.Ping, testPing
+	// case "socks5":
+	// testIPFunc = testSocks5
+	default:
+		log.Panicln("Unknown scan mode:", scanMode)
+	}
+	return nil, nil
 }

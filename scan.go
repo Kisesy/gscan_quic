@@ -45,12 +45,12 @@ func (srs *ScanRecords) ScanCount() int32 {
 	return atomic.LoadInt32(&srs.scanCounter)
 }
 
-var testIPFunc func(ctx context.Context, ip string, config *ScanConfig, record *ScanRecord) bool
+type testIPFunc func(ctx context.Context, ip string, config *ScanConfig, record *ScanRecord) bool
 
-func testip(ctx context.Context, ip string, config *ScanConfig) *ScanRecord {
+func testip(ctx context.Context, testFunc testIPFunc, ip string, config *ScanConfig) *ScanRecord {
 	record := new(ScanRecord)
 	for i := 0; i < config.ScanCountPerIP; i++ {
-		if !testIPFunc(ctx, ip, config, record) {
+		if !testFunc(ctx, ip, config, record) {
 			return nil
 		}
 	}
@@ -59,7 +59,9 @@ func testip(ctx context.Context, ip string, config *ScanConfig) *ScanRecord {
 	return record
 }
 
-func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, cfg *ScanConfig, srs *ScanRecords) {
+func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, srs *ScanRecords) {
+	cfg, testFunc := gcfg.getScanConfig(gcfg.ScanMode)
+
 	for ip := range ipQueue {
 		srs.IncScanCounter()
 
@@ -76,7 +78,7 @@ func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, c
 		case <-ctx.Done():
 			return
 		default:
-			r := testip(ctx, ip, cfg)
+			r := testip(ctx, testFunc, ip, cfg)
 			if r != nil {
 				srs.AddRecord(r) // 这里放到前面，扫描时可能会多出一些记录, 但是不影响
 				if srs.RecordSize() >= cfg.RecordLimit {
@@ -88,7 +90,7 @@ func testIPWorker(ctx context.Context, ipQueue chan string, gcfg *GScanConfig, c
 	}
 }
 
-func StartScan(gcfg *GScanConfig, cfg *ScanConfig, ipQueue chan string) *ScanRecords {
+func StartScan(gcfg *GScanConfig, ipQueue chan string) *ScanRecords {
 	var wg sync.WaitGroup
 	var srs ScanRecords
 
@@ -99,7 +101,7 @@ func StartScan(gcfg *GScanConfig, cfg *ScanConfig, ipQueue chan string) *ScanRec
 	for i := 0; i < gcfg.ScanWorker; i++ {
 		go func() {
 			defer wg.Done()
-			testIPWorker(ctx, ipQueue, gcfg, cfg, &srs)
+			testIPWorker(ctx, ipQueue, gcfg, &srs)
 		}()
 	}
 	wg.Wait()
