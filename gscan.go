@@ -113,7 +113,7 @@ func (gs *GScanner) loadConfig(cfgFile string) error {
 
 func main() {
 	var cfgfile string
-	flag.StringVar(&cfgfile, "Config File", "./config.json", "Config file, json format")
+	flag.StringVar(&cfgfile, "Config", "./config.json", "Config file, json format")
 	flag.Parse()
 
 	scanner := new(GScanner)
